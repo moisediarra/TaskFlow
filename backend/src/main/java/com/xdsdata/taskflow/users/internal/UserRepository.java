@@ -19,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
 	boolean existsByEmail(String email);
 
+	boolean existsByRoleAndStatus(Role role, UserStatus status);
+
 	/** Locks the matching rows so concurrent role/status changes cannot remove the last IT Manager. */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select u from User u where u.role = :role and u.status = :status")
