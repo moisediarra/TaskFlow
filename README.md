@@ -1498,7 +1498,7 @@ Relevant users receive notifications
 
  The final application should remain simple enough for everyday use while providing sufficient visibility for IT management.
 
-# 46\ Architecture Backend
+# 46\. Architecture Backend
 Je recommande une architecture : Modular Monolith.
 
 Stack technique :
