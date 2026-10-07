@@ -73,3 +73,4 @@ app:
     overdue-task-warning: 3
   notifications:
     deadline-sweep-interval: 15m
+    sweep-enabled: ${APP_DEADLINE_SWEEP_ENABLED:true}
