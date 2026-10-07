@@ -38,11 +38,12 @@ management:
     health:
       show-details: never
 
+# API documentation (Swagger UI at /swagger-ui.html) is for local development only.
 springdoc:
   api-docs:
-    enabled: false
+    enabled: ${APP_API_DOCS_ENABLED:false}
   swagger-ui:
-    enabled: false
+    enabled: ${APP_API_DOCS_ENABLED:false}
 
 app:
   frontend-url: ${APP_FRONTEND_URL:http://localhost:5173}
@@ -50,13 +51,15 @@ app:
   timezone: ${APP_TIMEZONE:UTC}
   default-signup-role: ${APP_DEFAULT_SIGNUP_ROLE:PROJECT_OWNER}
   cookie-secure: ${APP_COOKIE_SECURE:false}
+  rate-limit-enabled: ${APP_RATE_LIMIT_ENABLED:true}
   jwt:
     secret: ${JWT_SECRET:}
     access-token-ttl: 15m
     refresh-token-ttl: 14d
   password-reset:
     token-ttl: 30m
-    log-links: false
+    # Without SMTP (SPRING_MAIL_HOST), print reset links to the log. Enable for local development only.
+    log-links: ${APP_LOG_RESET_LINKS:false}
     mail-from: ${APP_MAIL_FROM:TaskFlow <no-reply@taskflow.local>}
   bootstrap:
     admin-email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
