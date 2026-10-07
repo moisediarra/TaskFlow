@@ -33,7 +33,7 @@ class ResetLinkSender {
 	}
 
 	@Async
-	void send(String recipientName, String recipientEmail, String link, Duration validity) {
+	public void send(String recipientName, String recipientEmail, String link, Duration validity) {
 		JavaMailSender sender = mailSender.getIfAvailable();
 		if (sender != null) {
 			SimpleMailMessage message = new SimpleMailMessage();
