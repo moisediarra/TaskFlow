@@ -1,0 +1,19 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+backend.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+
+# Personal Claude Code settings and hooks
+.claude/settings.local.json
+.claude/hooks/

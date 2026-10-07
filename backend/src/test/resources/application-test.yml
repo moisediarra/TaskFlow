@@ -1,0 +1,15 @@
+app:
+  jwt:
+    secret: test-only-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+  password-reset:
+    log-links: true
+  frontend-url: http://localhost:5173
+  allowed-origins: http://localhost:5173
+  rate-limit-enabled: false
+  bootstrap:
+    admin-email: ""
+  seed:
+    demo: false
+  notifications:
+    # Tests trigger the deadline sweep explicitly.
+    sweep-enabled: false
