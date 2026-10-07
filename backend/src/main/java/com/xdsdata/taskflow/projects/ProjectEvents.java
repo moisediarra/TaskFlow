@@ -1,6 +1,6 @@
 package com.xdsdata.taskflow.projects;
 
-import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import com.xdsdata.taskflow.common.AuthUser;
@@ -17,9 +17,9 @@ public final class ProjectEvents {
 	public record ProjectCreated(AuthUser actor, UUID projectId, String projectName) {
 	}
 
-	/** {@code changes} maps a field name to its {old, new} values. */
-	public record ProjectUpdated(AuthUser actor, UUID projectId, String projectName,
-			Map<String, Map<String, String>> changes) {
+	/** {@code changedFields} contains "name" and/or "description". */
+	public record ProjectUpdated(AuthUser actor, UUID projectId, String projectName, String previousName,
+			Set<String> changedFields) {
 	}
 
 	/** Published before the project row is deleted. */
