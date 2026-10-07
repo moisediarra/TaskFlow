@@ -77,13 +77,13 @@ class AuthController {
 		}
 		catch (UnauthorizedException ex) {
 			// Drop the stale cookie so the browser stops presenting it.
-			return GlobalExceptionHandler.problem(ex.status(), ex.code(), ex.getMessage(), ex.fieldErrors())
-				.getBody() == null ? ResponseEntity.status(ex.status()).build()
-						: ResponseEntity.status(ex.status())
-							.header(HttpHeaders.SET_COOKIE, clearedCookie().toString())
-							.contentType(org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON)
-							.body(GlobalExceptionHandler.problem(ex.status(), ex.code(), ex.getMessage(), ex.fieldErrors())
-								.getBody());
+			ProblemDetail problem = GlobalExceptionHandler
+				.problem(ex.status(), ex.code(), ex.getMessage(), ex.fieldErrors())
+				.getBody();
+			return ResponseEntity.status(ex.status())
+				.header(HttpHeaders.SET_COOKIE, clearedCookie().toString())
+				.contentType(MediaType.APPLICATION_PROBLEM_JSON)
+				.body(problem);
 		}
 	}
 
