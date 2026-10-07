@@ -93,7 +93,7 @@ public class UserService {
 	}
 
 	public boolean anyItManagerExists() {
-		return !users.lockByRoleAndStatus(Role.IT_MANAGER, UserStatus.ACTIVE).isEmpty();
+		return users.existsByRoleAndStatus(Role.IT_MANAGER, UserStatus.ACTIVE);
 	}
 
 }
