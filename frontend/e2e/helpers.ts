@@ -68,3 +68,12 @@ export async function choose(page: Page, label: string, option: string) {
   await page.getByRole('combobox', { name: label }).click()
   await page.getByRole('option', { name: option, exact: true }).click()
 }
+
+/** Changes a task's status from its sheet, then checks the card landed in that column once the sheet is closed. */
+export async function setStatus(page: Page, title: string, column: string) {
+  await card(page, title).click()
+  await choose(page, 'Status', column)
+  await expect(page.getByRole('combobox', { name: 'Status' })).toHaveText(column)
+  await page.keyboard.press('Escape')
+  await expect(column_(page, column).getByText(title)).toBeVisible()
+}

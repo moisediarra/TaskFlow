@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { RUN, addMember, card, choose, column_, createProject, createTaskIn, emailFor, login, newPage, register } from './helpers'
+import { RUN, addMember, card, choose, createProject, createTaskIn, emailFor, login, newPage, register, setStatus } from './helpers'
 
 const IT_EMAIL = process.env.E2E_IT_EMAIL
 const IT_PASSWORD = process.env.E2E_IT_PASSWORD
@@ -44,12 +44,8 @@ test('definition of done: register → project → task → assignment → progr
 
   // Task moves to To Do, then to In Progress (by the intervenant).
   await member.goto(`/projects/${projectId}`)
-  await card(member, taskTitle).click()
-  await choose(member, 'Status', 'To Do')
-  await expect(column_(member, 'To Do').getByText(taskTitle)).toBeVisible()
-  await choose(member, 'Status', 'In Progress')
-  await expect(column_(member, 'In Progress').getByText(taskTitle)).toBeVisible()
-  await member.keyboard.press('Escape')
+  await setStatus(member, taskTitle, 'To Do')
+  await setStatus(member, taskTitle, 'In Progress')
 
   // The IT Manager sees who is working on it, in Team Activity.
   const it = await newPage(browser)
@@ -61,9 +57,7 @@ test('definition of done: register → project → task → assignment → progr
   await expect(row).toContainText('In Progress')
 
   // Task is completed: it moves to Done.
-  await card(member, taskTitle).click()
-  await choose(member, 'Status', 'Done')
-  await expect(column_(member, 'Done').getByText(taskTitle)).toBeVisible()
+  await setStatus(member, taskTitle, 'Done')
 
   // Activity is recorded.
   await it.goto('/management/activity-logs')
