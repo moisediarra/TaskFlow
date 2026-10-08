@@ -1,5 +1,4 @@
 import { Bar, BarChart, CartesianGrid, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import type { TooltipContentProps } from 'recharts'
 import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 /*
@@ -139,16 +138,17 @@ export function HorizontalBars({ data, valueLabel, threshold, categoryWidth = 11
   )
 }
 
-function ValueTooltip({ active, payload, label, unit }: TooltipContentProps<number, string> & { unit: string }) {
-  if (!active || !payload?.length) return null
+/** Value first, label second; keyed by a short line in the series color. */
+function ValueTooltip({ active, value, label, unit }: { active?: boolean; value?: unknown; label?: unknown; unit: string }) {
+  if (!active || value === undefined) return null
   return (
     <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
       <p className="flex items-center gap-2">
         <span className="h-0.5 w-3 rounded-full" style={{ backgroundColor: SERIES }} aria-hidden />
-        <span className="text-sm font-semibold text-foreground">{payload[0].value}</span>
+        <span className="text-sm font-semibold text-foreground">{String(value)}</span>
         <span className="text-muted-foreground">{unit}</span>
       </p>
-      <p className="mt-0.5 text-muted-foreground">{label}</p>
+      <p className="mt-0.5 text-muted-foreground">{String(label ?? '')}</p>
     </div>
   )
 }
