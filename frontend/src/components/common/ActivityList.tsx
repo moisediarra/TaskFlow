@@ -13,7 +13,6 @@ import {
   UserPlus,
   type LucideIcon,
 } from 'lucide-react'
-import { Loader2 } from 'lucide-react'
 import type { Activity, ActivityAction } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { formatDateTime, formatTime, timeAgo } from '@/lib/format'
