@@ -29,6 +29,11 @@ server:
     include-stacktrace: never
     include-binding-errors: never
 
+logging:
+  pattern:
+    # Every log line carries the request id that is also returned in error responses.
+    level: "%5p [%X{requestId:-}]"
+
 management:
   endpoints:
     web:
