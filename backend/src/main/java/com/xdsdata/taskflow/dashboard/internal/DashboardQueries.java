@@ -33,7 +33,7 @@ interface DashboardQueries extends Repository<Task, UUID> {
 	@Query("""
 			select t from Task t join fetch t.project
 			where t.assignee.id = :userId and t.status <> :done and t.dueDate = :date
-			order by t.priority, t.updatedAt desc""")
+			order by t.updatedAt desc""")
 	List<Task> findAssignedOpenDueOn(UUID userId, TaskStatus done, LocalDate date, Limit limit);
 
 	@Query("select count(t) from Task t where t.assignee.id = :userId and t.status <> :done and t.dueDate = :date")
