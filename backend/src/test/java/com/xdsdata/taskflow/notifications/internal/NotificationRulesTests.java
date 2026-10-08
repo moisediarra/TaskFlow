@@ -17,7 +17,6 @@ import com.xdsdata.taskflow.tasks.TaskPriority;
 import com.xdsdata.taskflow.tasks.TaskStatus;
 import com.xdsdata.taskflow.users.User;
 import com.xdsdata.taskflow.users.UserService;
-import com.xdsdata.taskflow.users.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -102,7 +102,7 @@ class NotificationRulesTests {
 	void deactivatedPeopleAreNeverNotified() {
 		User deactivated = mock(User.class);
 		when(deactivated.isActive()).thenReturn(false);
-		when(users.findById(ASSIGNEE)).thenReturn(Optional.of(deactivated));
+		doReturn(Optional.of(deactivated)).when(users).findById(ASSIGNEE);
 		TaskSnapshot task = task(TaskStatus.TODO);
 		rules.on(new TaskUpdated(OWNER_ACTOR, task, task, Set.of(TaskField.PRIORITY)));
 		verifyNoInteractions(notifications);
@@ -111,13 +111,6 @@ class NotificationRulesTests {
 	private static TaskSnapshot task(TaskStatus status) {
 		return new TaskSnapshot(UUID.randomUUID(), "Implement Login UI", UUID.randomUUID(), "Banking App", OWNER, status,
 				TaskPriority.HIGH, null, ASSIGNEE, "Ian", List.of());
-	}
-
-	private static User activeUser() {
-		User user = mock(User.class);
-		lenient().when(user.isActive()).thenReturn(true);
-		lenient().when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
-		return user;
 	}
 
 }
