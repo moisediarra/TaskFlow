@@ -19,7 +19,7 @@ cp .env.example .env        # then replace every "change-me" (see Configuration)
 docker compose up -d --build
 ```
 
-Open <http://localhost:8088> and sign in with `APP_BOOTSTRAP_ADMIN_EMAIL` / `APP_BOOTSTRAP_ADMIN_PASSWORD`. That IT Manager account is created at the first start. New people register themselves at `/register`.
+Open <http://localhost:8090> and sign in with `APP_BOOTSTRAP_ADMIN_EMAIL` / `APP_BOOTSTRAP_ADMIN_PASSWORD`. That IT Manager account is created at the first start. New people register themselves at `/register`.
 
 To get a populated app on the first start, set `APP_SEED_DEMO=true` and choose an `APP_SEED_DEMO_PASSWORD` (at least 8 characters) before the first `up`. Demo data is only created when the database has no projects yet. It contains the people from the spec (John Doe, Sarah Smith, Mohammed Ali, David Martin and Emma Wilson, all `firstname.lastname@taskflow.local`), three projects, and tasks in every column, some of them overdue.
 
@@ -27,11 +27,13 @@ The stack has three containers:
 
 | Service | What it does | Port |
 |---|---|---|
-| `frontend` | nginx serving the built app and proxying `/api` and `/ws` to the backend | `APP_PORT` (8088) |
+| `frontend` | nginx serving the built app and proxying `/api` and `/ws` to the backend | `APP_PORT` (8090) |
 | `backend` | Spring Boot API, non-root, healthcheck on `/actuator/health` | internal 8080 |
 | `db` | PostgreSQL 18, data in the `db-data` volume | `127.0.0.1:DB_PORT` (5433) |
 
 `docker compose down` stops the stack and keeps the data. `docker compose down -v` also deletes the database.
+
+If Docker reports `ports are not available ... bind: An attempt was made to access a socket in a way forbidden by its access permissions`, Windows has reserved that port. You can list the reserved ranges with `netsh interface ipv4 show excludedportrange protocol=tcp`. Choose another port by setting `APP_PORT` and `APP_PUBLIC_URL` in `.env`, then run `docker compose up -d` again.
 
 ## Local development
 
@@ -82,7 +84,7 @@ The backend reads environment variables, or `backend/.env` when you run it local
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | `jdbc:postgresql://localhost:5432/taskflow`, `taskflow`, empty | Database connection (backend). |
 | `POSTGRES_PASSWORD` | required | Database password (Compose). |
 | `JWT_SECRET` | required | HMAC key for access tokens, at least 32 characters. |
-| `APP_PUBLIC_URL` | `http://localhost:8088` | Public URL (Compose). It becomes `APP_FRONTEND_URL` and `APP_ALLOWED_ORIGINS`. |
+| `APP_PUBLIC_URL` | `http://localhost:8090` | Public URL (Compose). It becomes `APP_FRONTEND_URL` and `APP_ALLOWED_ORIGINS`. |
 | `APP_FRONTEND_URL` | `http://localhost:5173` | Base URL for password-reset links. |
 | `APP_ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated origins allowed for CORS, cookie endpoints and WebSocket. |
 | `APP_COOKIE_SECURE` | `false` | Set to `true` behind HTTPS, so the refresh cookie is `Secure`. |
@@ -94,7 +96,7 @@ The backend reads environment variables, or `backend/.env` when you run it local
 | `APP_API_DOCS_ENABLED` | `false` | Expose OpenAPI and Swagger UI. |
 | `APP_RATE_LIMIT_ENABLED` | `true` | Rate limits on login, forgot-password and reset. |
 | `APP_DEADLINE_SWEEP_ENABLED` | `true` | Deadline and overdue notifications, checked every 15 minutes. |
-| `APP_PORT`, `DB_PORT` | `8088`, `5433` | Host ports (Compose). |
+| `APP_PORT`, `DB_PORT` | `8090`, `5433` | Host ports (Compose). |
 
 ## Tests
 
@@ -109,7 +111,7 @@ cd frontend && npm run typecheck && npm run lint && npm test && npm run build
 cd frontend
 npx playwright install chromium        # once
 E2E_IT_EMAIL=it.manager@taskflow.local E2E_IT_PASSWORD=... npm run e2e
-# Against Docker: add E2E_BASE_URL=http://localhost:8088
+# Against Docker: add E2E_BASE_URL=http://localhost:8090
 ```
 
 What the tests cover:
