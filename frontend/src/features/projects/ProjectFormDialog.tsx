@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -31,22 +31,42 @@ interface ProjectFormDialogProps {
 }
 
 export function ProjectFormDialog({ open, onOpenChange, project, onSaved }: ProjectFormDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{project ? 'Edit project' : 'Create a project'}</DialogTitle>
+          <DialogDescription>
+            {project ? 'Update the name and description.' : 'Give your project a name; you can add members and tasks next.'}
+          </DialogDescription>
+        </DialogHeader>
+        {/* Mounted only while open, so every opening starts from a fresh form. */}
+        <ProjectForm project={project} onClose={() => onOpenChange(false)} onSaved={onSaved} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ProjectForm({
+  project,
+  onClose,
+  onSaved,
+}: {
+  project?: Pick<ProjectDetail, 'id' | 'name' | 'description'>
+  onClose: () => void
+  onSaved?: (project: ProjectDetail) => void
+}) {
   const queryClient = useQueryClient()
   const [formError, setFormError] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
-    reset,
     setError,
     formState: { errors },
-  } = useForm<Values>({ resolver: zodResolver(schema), defaultValues: { name: '', description: '' } })
-
-  useEffect(() => {
-    if (open) {
-      reset({ name: project?.name ?? '', description: project?.description ?? '' })
-      setFormError(null)
-    }
-  }, [open, project, reset])
+  } = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: project?.name ?? '', description: project?.description ?? '' },
+  })
 
   const save = useMutation({
     mutationFn: (values: Values) => {
@@ -57,7 +77,7 @@ export function ProjectFormDialog({ open, onOpenChange, project, onSaved }: Proj
       void queryClient.invalidateQueries({ queryKey: queryKeys.projects })
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard })
       toast.success(project ? 'Project updated.' : `Project “${saved.name}” created.`)
-      onOpenChange(false)
+      onClose()
       onSaved?.(saved)
     },
     onError: (error) => {
@@ -66,39 +86,29 @@ export function ProjectFormDialog({ open, onOpenChange, project, onSaved }: Proj
   })
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>{project ? 'Edit project' : 'Create a project'}</DialogTitle>
-          <DialogDescription>
-            {project ? 'Update the name and description.' : 'Give your project a name; you can add members and tasks next.'}
-          </DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-4" onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
-          <FormError message={formError} />
-          <FormField label="Name" htmlFor="project-name" error={errors.name?.message}>
-            <Input id="project-name" placeholder="Mobile Banking App" autoFocus aria-invalid={!!errors.name} {...register('name')} />
-          </FormField>
-          <FormField label="Description" htmlFor="project-description" error={errors.description?.message}>
-            <Textarea
-              id="project-description"
-              rows={4}
-              placeholder="What is this project about?"
-              aria-invalid={!!errors.description}
-              {...register('description')}
-            />
-          </FormField>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={save.isPending}>
-              {save.isPending ? <Loader2 className="animate-spin" /> : null}
-              {project ? 'Save changes' : 'Create project'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form className="grid gap-4" onSubmit={handleSubmit((values) => save.mutate(values))} noValidate>
+      <FormError message={formError} />
+      <FormField label="Name" htmlFor="project-name" error={errors.name?.message}>
+        <Input id="project-name" placeholder="Mobile Banking App" autoFocus aria-invalid={!!errors.name} {...register('name')} />
+      </FormField>
+      <FormField label="Description" htmlFor="project-description" error={errors.description?.message}>
+        <Textarea
+          id="project-description"
+          rows={4}
+          placeholder="What is this project about?"
+          aria-invalid={!!errors.description}
+          {...register('description')}
+        />
+      </FormField>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={save.isPending}>
+          {save.isPending ? <Loader2 className="animate-spin" /> : null}
+          {project ? 'Save changes' : 'Create project'}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
