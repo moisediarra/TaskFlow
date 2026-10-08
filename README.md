@@ -122,6 +122,8 @@ What the tests cover:
   - The intervenant moves the task through To Do and In Progress. The IT Manager sees it in Team Activity.
   - The intervenant completes it. The activity log records it and the owner is notified.
 - **`board-drag.spec.ts`** checks that a drag and drop survives a reload.
+- **`responsive.spec.ts`** opens every page, including the task sheet and the IT Manager pages, at 375, 768 and 1280 px. It fails if a page scrolls sideways and saves screenshots to `frontend/test-results/`.
+- Against the Docker build, every E2E test also fails on a Content-Security-Policy violation.
 - **Backend integration tests:**
   - A sweep over every endpoint: 401 without a token, and 403 on `/api/management/**` for anyone who isn't an IT Manager.
   - The role × membership permission matrix, plus tampered IDs.
