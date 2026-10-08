@@ -67,8 +67,11 @@ class DashboardService {
 		TaskList highPriority = new TaskList(
 				refs(queries.findAssignedOpenWithPriority(userId, done, TaskPriority.HIGH, LIST_LIMIT), today),
 				queries.countAssignedOpenWithPriority(userId, done, TaskPriority.HIGH));
-		TaskList dueToday = new TaskList(refs(queries.findAssignedOpenDueOn(userId, done, today, LIST_LIMIT), today),
-				queries.countAssignedOpenDueOn(userId, done, today));
+		List<Task> dueTodayTasks = queries.findAssignedOpenDueOn(userId, done, today, LIST_LIMIT)
+			.stream()
+			.sorted(Comparator.comparing(Task::getPriority))
+			.toList();
+		TaskList dueToday = new TaskList(refs(dueTodayTasks, today), queries.countAssignedOpenDueOn(userId, done, today));
 		TaskList overdue = new TaskList(refs(queries.findAssignedOverdue(userId, done, today, LIST_LIMIT), today),
 				queries.countAssignedOverdue(userId, done, today));
 		return new DashboardDto(statusCounts(queries.countAssignedByStatus(userId)), highPriority, dueToday, overdue,

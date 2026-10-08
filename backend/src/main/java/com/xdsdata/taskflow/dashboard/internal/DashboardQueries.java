@@ -42,7 +42,7 @@ interface DashboardQueries extends Repository<Task, UUID> {
 	@Query("""
 			select t from Task t join fetch t.project
 			where t.assignee.id = :userId and t.status <> :done and t.dueDate < :today
-			order by t.dueDate asc, t.priority""")
+			order by t.dueDate asc, t.updatedAt desc""")
 	List<Task> findAssignedOverdue(UUID userId, TaskStatus done, LocalDate today, Limit limit);
 
 	@Query("select count(t) from Task t where t.assignee.id = :userId and t.status <> :done and t.dueDate < :today")
