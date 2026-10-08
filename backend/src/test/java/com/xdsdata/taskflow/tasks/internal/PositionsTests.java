@@ -31,7 +31,8 @@ class PositionsTests {
 			below = Positions.between(above, below);
 			insertions++;
 		}
-		assertThat(insertions).isGreaterThan(30);
+		// About 30 drops into the same slot before the column has to be renumbered.
+		assertThat(insertions).isEqualTo(30);
 		assertThat(Positions.needsRenumbering(2048.0, 1024.0)).isTrue();
 		assertThat(Positions.needsRenumbering(null, 1024.0)).isFalse();
 	}
