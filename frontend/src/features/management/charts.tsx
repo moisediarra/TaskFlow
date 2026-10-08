@@ -29,14 +29,12 @@ export function PipelineBar({ segments }: { segments: PipelineSegment[] }) {
         <div className="h-6 rounded-md bg-muted" aria-hidden />
       ) : (
         <div className="flex h-6 gap-[2px]" aria-hidden>
-          {visible.map((segment, index) => (
+          {visible.map((segment) => (
             <UiTooltip key={segment.label}>
               <TooltipTrigger asChild>
                 <div
-                  tabIndex={0}
-                  className="h-full min-w-1 outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-ring first:rounded-l-sm last:rounded-r-sm"
-                  style={{ flexGrow: segment.value, backgroundColor: segment.color, borderRadius: visible.length === 1 ? 4 : undefined }}
-                  aria-label={`${segment.label}: ${segment.value}`}
+                  className="h-full min-w-1 transition-opacity hover:opacity-85 first:rounded-l-[4px] last:rounded-r-[4px]"
+                  style={{ flexGrow: segment.value, backgroundColor: segment.color }}
                 />
               </TooltipTrigger>
               <TooltipContent>
@@ -45,7 +43,6 @@ export function PipelineBar({ segments }: { segments: PipelineSegment[] }) {
               </TooltipContent>
             </UiTooltip>
           ))}
-          {index0Hint()}
         </div>
       )}
       <figcaption>
@@ -64,11 +61,6 @@ export function PipelineBar({ segments }: { segments: PipelineSegment[] }) {
       </figcaption>
     </figure>
   )
-}
-
-// Placeholder kept intentionally empty: segments carry their own focusable tooltip.
-function index0Hint() {
-  return null
 }
 
 export interface BarDatum {
