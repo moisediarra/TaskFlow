@@ -18,6 +18,7 @@ import { STATUS_LABEL } from '@/lib/labels'
 import { queryKeys } from '@/lib/query-keys'
 import { useDebouncedValue } from '@/lib/use-debounced-value'
 import { timeAgo } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 /**
  * Debounced search (claude.md §19): tasks by title, description and tags for everyone; IT Managers also find
