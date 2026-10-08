@@ -1,20 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router'
+import { Link, NavLink, Outlet, useParams } from 'react-router'
 import { ChevronLeft, Eye } from 'lucide-react'
 import { projectsApi } from '@/api/endpoints'
-import type { ProjectDetail } from '@/api/types'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/common/states'
 import { queryKeys } from '@/lib/query-keys'
 import { cn } from '@/lib/utils'
-
-export interface ProjectOutletContext {
-  project: ProjectDetail
-}
-
-export function useProject() {
-  return useOutletContext<ProjectOutletContext>().project
-}
+import type { ProjectOutletContext } from './project-context'
 
 /** Header and tabs (Board · Overview · Settings) shared by a project's pages. */
 export function ProjectLayout() {
