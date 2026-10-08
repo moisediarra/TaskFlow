@@ -65,13 +65,19 @@ export function GlobalSearch({ global }: { global: boolean }) {
     <>
       <Button
         variant="outline"
-        className="size-8 justify-center gap-2 px-0 text-muted-foreground sm:w-56 sm:justify-start sm:px-2.5 lg:w-72"
+        // A full field where the header has room (sm, and lg and up); an icon on phones and next to the md nav links.
+        className={cn(
+          'size-8 justify-center gap-2 px-0 text-muted-foreground',
+          'sm:w-56 sm:justify-start sm:px-2.5 md:w-8 md:justify-center md:px-0 lg:w-72 lg:justify-start lg:px-2.5',
+        )}
         onClick={() => setOpen(true)}
         aria-label="Search"
       >
         <Search />
-        <span className="hidden sm:inline">{global ? 'Search everything…' : 'Search tasks…'}</span>
-        <kbd className="ml-auto hidden rounded border bg-muted px-1.5 font-mono text-[10px] sm:inline">Ctrl K</kbd>
+        <span className="hidden sm:inline md:hidden lg:inline">{global ? 'Search everything…' : 'Search tasks…'}</span>
+        <kbd className="ml-auto hidden rounded border bg-muted px-1.5 font-mono text-[10px] sm:inline md:hidden lg:inline">
+          Ctrl K
+        </kbd>
       </Button>
       <CommandDialog
         open={open}
