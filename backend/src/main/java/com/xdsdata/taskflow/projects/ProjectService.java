@@ -197,6 +197,10 @@ public class ProjectService {
 		return members.findProjectIdsByUserId(userId);
 	}
 
+	public boolean anyProjectExists() {
+		return projects.count() > 0;
+	}
+
 	private ProjectDetailDto detail(Project project, AuthUser viewer) {
 		long memberCount = countMembers(List.of(project.getId())).getOrDefault(project.getId(), 0L);
 		ProjectRole myRole = members.findMembership(project.getId(), viewer.id()).map(ProjectMember::getRole).orElse(null);
