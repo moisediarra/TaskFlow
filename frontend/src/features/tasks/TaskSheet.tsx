@@ -42,7 +42,7 @@ export function TaskSheet({ projectId, taskId, members, tags, canCreateTags, onC
 
   return (
     <Sheet open={!!taskId} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full gap-0 overflow-y-auto data-[side=right]:sm:max-w-xl">
+      <SheetContent side="right" className="gap-0 overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-xl">
         {task.isPending ? (
           <div className="space-y-4 p-6">
             <SheetTitle className="sr-only">Loading task</SheetTitle>
