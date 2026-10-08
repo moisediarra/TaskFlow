@@ -104,7 +104,12 @@ export function HorizontalBars({ data, valueLabel, threshold, categoryWidth = 11
               tickLine={false}
               interval={0}
             />
-            <Tooltip cursor={{ fill: 'rgba(15, 23, 42, 0.04)' }} content={(props) => <ValueTooltip {...props} unit={valueLabel} />} />
+            <Tooltip
+              cursor={{ fill: 'rgba(15, 23, 42, 0.04)' }}
+              content={({ active, payload, label }) => (
+                <ValueTooltip active={active} value={payload?.[0]?.value} label={label} unit={valueLabel} />
+              )}
+            />
             {threshold ? (
               <ReferenceLine
                 x={threshold.value}
