@@ -60,7 +60,9 @@ class NotificationRulesTests {
 	@BeforeEach
 	void setUp() {
 		rules = new NotificationRules(notifications, deadlines, users);
-		lenient().when(users.findById(any())).thenAnswer(invocation -> Optional.of(activeUser()));
+		User active = mock(User.class);
+		lenient().when(active.isActive()).thenReturn(true);
+		lenient().when(users.findById(any())).thenReturn(Optional.of(active));
 	}
 
 	@Test
