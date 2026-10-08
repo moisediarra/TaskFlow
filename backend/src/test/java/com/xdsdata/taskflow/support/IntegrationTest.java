@@ -71,7 +71,7 @@ public abstract class IntegrationTest {
 	protected Session register(String name) throws Exception {
 		String email = uniqueEmail(name);
 		mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
-			.content(body("name", name, "email", email, "password", PASSWORD, "confirmPassword", PASSWORD)))
+			.content(toJson(body("name", name, "email", email, "password", PASSWORD, "confirmPassword", PASSWORD))))
 			.andExpect(status().isCreated());
 		return login(email, PASSWORD);
 	}
@@ -86,7 +86,7 @@ public abstract class IntegrationTest {
 	protected Session login(String email, String password) throws Exception {
 		MvcResult result = mvc
 			.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-				.content(body("email", email, "password", password)))
+				.content(toJson(body("email", email, "password", password))))
 			.andExpect(status().isOk())
 			.andReturn();
 		Cookie refresh = result.getResponse().getCookie(REFRESH_COOKIE);
