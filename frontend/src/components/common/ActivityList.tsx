@@ -5,6 +5,7 @@ import {
   Flag,
   FolderPlus,
   FolderX,
+  Loader2,
   Pencil,
   ShieldCheck,
   Trash2,
