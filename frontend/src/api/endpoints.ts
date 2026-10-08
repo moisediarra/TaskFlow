@@ -135,13 +135,13 @@ export const managementApi = {
   workload: () => data(http.get<Workload>('/management/workload')),
   activityLogs: (filters: ActivityLogFilters, cursor?: string | null) =>
     data(http.get<CursorPage<Activity>>('/management/activity-logs', { params: params({ ...filters, cursor, limit: 30 }) })),
-  users: (filters: { q?: string; role?: Role; status?: UserStatus; page?: number }) =>
-    data(http.get<PageResponse<UserRow>>('/management/users', { params: params({ ...filters, size: 20 }) })),
+  users: (filters: { q?: string; role?: Role; status?: UserStatus; page?: number; size?: number }) =>
+    data(http.get<PageResponse<UserRow>>('/management/users', { params: params({ size: 20, ...filters }) })),
   user: (id: string) => data(http.get<UserDetail>(`/management/users/${id}`)),
   changeRole: (id: string, role: Role, currentPassword: string) =>
     data(http.patch<UserRow>(`/management/users/${id}/role`, { role, currentPassword })),
   changeStatus: (id: string, status: UserStatus, currentPassword: string) =>
     data(http.patch<UserRow>(`/management/users/${id}/status`, { status, currentPassword })),
-  projects: (filters: { q?: string; page?: number }) =>
-    data(http.get<PageResponse<ProjectSummary>>('/management/projects', { params: params({ ...filters, size: 20 }) })),
+  projects: (filters: { q?: string; page?: number; size?: number }) =>
+    data(http.get<PageResponse<ProjectSummary>>('/management/projects', { params: params({ size: 20, ...filters }) })),
 }
