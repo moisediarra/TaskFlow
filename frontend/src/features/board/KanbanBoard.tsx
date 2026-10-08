@@ -129,7 +129,9 @@ export function KanbanBoard({ board, extraDone, onOpenTask, onAddTask, doneFoote
     >
       <div
         className={cn(
-          '-mx-4 flex items-start gap-3 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:px-6 lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0',
+          // scroll-px keeps snapped columns on the page gutter instead of flush with the screen edge.
+          '-mx-4 flex scroll-px-4 items-start gap-3 overflow-x-auto px-4 pb-4 sm:-mx-6 sm:scroll-px-6 sm:px-6',
+          'lg:mx-0 lg:grid lg:grid-cols-4 lg:overflow-visible lg:px-0',
           activeId ? 'snap-none' : 'snap-x snap-mandatory lg:snap-none',
         )}
       >
