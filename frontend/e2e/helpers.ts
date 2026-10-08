@@ -44,7 +44,7 @@ export async function addMember(page: Page, projectId: string, email: string, na
   await page.goto(`/projects/${projectId}/settings`)
   await page.getByLabel('Email').fill(email)
   await page.getByRole('button', { name: 'Add member' }).click()
-  await expect(page.getByRole('listitem').filter({ hasText: name })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Remove ${name}` })).toBeVisible()
 }
 
 export async function createTaskIn(page: Page, projectId: string, column: string, title: string) {
