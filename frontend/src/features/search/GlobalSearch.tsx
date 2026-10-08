@@ -65,7 +65,7 @@ export function GlobalSearch({ global }: { global: boolean }) {
     <>
       <Button
         variant="outline"
-        className="h-8 w-full justify-start gap-2 text-muted-foreground sm:w-56 lg:w-72"
+        className="size-8 justify-center gap-2 px-0 text-muted-foreground sm:w-56 sm:justify-start sm:px-2.5 lg:w-72"
         onClick={() => setOpen(true)}
         aria-label="Search"
       >
