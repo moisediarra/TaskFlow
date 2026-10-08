@@ -1,11 +1,14 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { RouterProvider } from 'react-router/dom'
+import { AppProviders } from '@/app/providers'
+import { router } from '@/app/router'
 import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <main className="grid min-h-svh place-items-center">
-      <h1 className="text-2xl font-semibold text-primary">TaskFlow</h1>
-    </main>
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
   </StrictMode>,
 )
