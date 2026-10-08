@@ -1,12 +1,10 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter } from 'react-router'
 import { AuthLayout } from '@/features/auth/AuthLayout'
-import { homePath } from '@/features/auth/auth-context'
 import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
 import { RequireAuth, RequireGuest, RequireItManager } from '@/features/auth/guards'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegisterPage } from '@/features/auth/RegisterPage'
 import { ResetPasswordPage } from '@/features/auth/ResetPasswordPage'
-import { useCurrentUser } from '@/features/auth/use-auth'
 import { BoardPage } from '@/features/board/BoardPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { NotificationsPage } from '@/features/notifications/NotificationsPage'
@@ -17,11 +15,8 @@ import { ProjectSettingsPage } from '@/features/projects/ProjectSettingsPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { NotFoundPage, RouteErrorPage } from '@/pages/NotFoundPage'
 import { AppLayout } from './AppLayout'
+import { HomeRedirect } from './HomeRedirect'
 import { ManagementLayout } from './ManagementLayout'
-
-function HomeRedirect() {
-  return <Navigate to={homePath(useCurrentUser())} replace />
-}
 
 // IT Management pages (and their charts) load on demand.
 const management = {

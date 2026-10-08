@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Loader2, ShieldAlert } from 'lucide-react'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
@@ -30,38 +30,6 @@ export function ConfirmWithPasswordDialog({
   destructive = false,
   onConfirm,
 }: ConfirmWithPasswordDialogProps) {
-  const [password, setPassword] = useState('')
-  const [fieldError, setFieldError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [pending, setPending] = useState(false)
-
-  useEffect(() => {
-    if (open) {
-      setPassword('')
-      setFieldError(null)
-      setFormError(null)
-    }
-  }, [open])
-
-  const submit = async () => {
-    if (!password) {
-      setFieldError('Enter your password to confirm.')
-      return
-    }
-    setPending(true)
-    setFieldError(null)
-    setFormError(null)
-    try {
-      await onConfirm(password)
-      onOpenChange(false)
-    } catch (error) {
-      if (error instanceof ApiError && error.fieldErrors.currentPassword) setFieldError(error.fieldErrors.currentPassword)
-      else setFormError(errorMessage(error))
-    } finally {
-      setPending(false)
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -73,37 +41,84 @@ export function ConfirmWithPasswordDialog({
             <div className="text-sm text-muted-foreground">{description}</div>
           </DialogDescription>
         </DialogHeader>
-        <form
-          className="grid gap-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void submit()
+        {/* Mounted only while open, so the password never lingers between openings. */}
+        <PasswordConfirmForm
+          confirmLabel={confirmLabel}
+          destructive={destructive}
+          onCancel={() => onOpenChange(false)}
+          onConfirm={async (password) => {
+            await onConfirm(password)
+            onOpenChange(false)
           }}
-          noValidate
-        >
-          <FormError message={formError} />
-          <FormField label="Your password" htmlFor="confirm-password" error={fieldError ?? undefined}>
-            <Input
-              id="confirm-password"
-              type="password"
-              autoComplete="current-password"
-              autoFocus
-              value={password}
-              aria-invalid={!!fieldError}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </FormField>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
-              Cancel
-            </Button>
-            <Button type="submit" variant={destructive ? 'destructive' : 'default'} disabled={pending}>
-              {pending ? <Loader2 className="animate-spin" /> : null}
-              {confirmLabel}
-            </Button>
-          </DialogFooter>
-        </form>
+        />
       </DialogContent>
     </Dialog>
+  )
+}
+
+function PasswordConfirmForm({
+  confirmLabel,
+  destructive,
+  onCancel,
+  onConfirm,
+}: {
+  confirmLabel: string
+  destructive: boolean
+  onCancel: () => void
+  onConfirm: (password: string) => Promise<void>
+}) {
+  const [password, setPassword] = useState('')
+  const [fieldError, setFieldError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+
+  const submit = async () => {
+    if (!password) {
+      setFieldError('Enter your password to confirm.')
+      return
+    }
+    setPending(true)
+    setFieldError(null)
+    setFormError(null)
+    try {
+      await onConfirm(password)
+    } catch (error) {
+      if (error instanceof ApiError && error.fieldErrors.currentPassword) setFieldError(error.fieldErrors.currentPassword)
+      else setFormError(errorMessage(error))
+      setPending(false)
+    }
+  }
+
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void submit()
+      }}
+      noValidate
+    >
+      <FormError message={formError} />
+      <FormField label="Your password" htmlFor="confirm-password" error={fieldError ?? undefined}>
+        <Input
+          id="confirm-password"
+          type="password"
+          autoComplete="current-password"
+          autoFocus
+          value={password}
+          aria-invalid={!!fieldError}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+      </FormField>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+          Cancel
+        </Button>
+        <Button type="submit" variant={destructive ? 'destructive' : 'default'} disabled={pending}>
+          {pending ? <Loader2 className="animate-spin" /> : null}
+          {confirmLabel}
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }

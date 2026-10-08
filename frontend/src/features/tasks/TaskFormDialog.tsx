@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
@@ -32,26 +32,43 @@ const EMPTY: TaskFormValues = {
 }
 
 export function TaskFormDialog({ projectId, status, onClose, members, tags }: TaskFormDialogProps) {
+  return (
+    <Dialog open={status !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[92svh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>New task</DialogTitle>
+          <DialogDescription>{status ? `It will be added to ${STATUS_LABEL[status]}.` : null}</DialogDescription>
+        </DialogHeader>
+        {status ? <NewTaskForm projectId={projectId} status={status} onClose={onClose} members={members} tags={tags} /> : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function NewTaskForm({
+  projectId,
+  status,
+  onClose,
+  members,
+  tags,
+}: {
+  projectId: string
+  status: TaskStatus
+  onClose: () => void
+  members: ProjectMember[]
+  tags: Tag[]
+}) {
   const create = useCreateTask(projectId)
   const [formError, setFormError] = useState<string | null>(null)
   const {
     register,
     control,
     handleSubmit,
-    reset,
     setError,
     formState: { errors },
   } = useForm<TaskFormValues>({ resolver: zodResolver(taskFormSchema), defaultValues: EMPTY })
 
-  useEffect(() => {
-    if (status) {
-      reset(EMPTY)
-      setFormError(null)
-    }
-  }, [status, reset])
-
   const onSubmit = handleSubmit((values) => {
-    if (!status) return
     setFormError(null)
     create.mutate(
       { ...toTaskInput(values), status, assigneeId: values.assigneeId === UNASSIGNED ? null : values.assigneeId },
@@ -65,34 +82,26 @@ export function TaskFormDialog({ projectId, status, onClose, members, tags }: Ta
   })
 
   return (
-    <Dialog open={status !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[92svh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>New task</DialogTitle>
-          <DialogDescription>{status ? `It will be added to ${STATUS_LABEL[status]}.` : null}</DialogDescription>
-        </DialogHeader>
-        <form className="grid gap-4" onSubmit={onSubmit} noValidate>
-          <FormError message={formError} />
-          <TaskFields
-            idPrefix="new-task"
-            register={register}
-            control={control}
-            errors={errors}
-            tags={tags}
-            canCreateTags
-            members={members}
-          />
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={create.isPending}>
-              {create.isPending ? <Loader2 className="animate-spin" /> : null}
-              Create task
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <form className="grid gap-4" onSubmit={onSubmit} noValidate>
+      <FormError message={formError} />
+      <TaskFields
+        idPrefix="new-task"
+        register={register}
+        control={control}
+        errors={errors}
+        tags={tags}
+        canCreateTags
+        members={members}
+      />
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={create.isPending}>
+          {create.isPending ? <Loader2 className="animate-spin" /> : null}
+          Create task
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }
