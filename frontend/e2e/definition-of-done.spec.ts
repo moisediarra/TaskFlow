@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { RUN, addMember, card, choose, createProject, createTaskIn, emailFor, login, newPage, register, setStatus } from './helpers'
+import { RUN, cspViolations, addMember, card, choose, createProject, createTaskIn, emailFor, login, newPage, register, setStatus } from './helpers'
 
 const IT_EMAIL = process.env.E2E_IT_EMAIL
 const IT_PASSWORD = process.env.E2E_IT_PASSWORD
@@ -67,4 +67,5 @@ test('definition of done: register → project → task → assignment → progr
   await owner.reload()
   await owner.getByRole('button', { name: /Notifications, \d+ unread/ }).click()
   await expect(owner.getByText(`${memberName} completed a task`)).toBeVisible()
+  expect(cspViolations).toEqual([])
 })

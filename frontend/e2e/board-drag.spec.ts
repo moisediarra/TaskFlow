@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { RUN, card, column_, createProject, createTaskIn, emailFor, login, newPage, register } from './helpers'
+import { RUN, cspViolations, card, column_, createProject, createTaskIn, emailFor, login, newPage, register } from './helpers'
 
 /** claude.md §11: dragging a card persists its new column (it survives a reload). */
 test('drag and drop moves a card to another column and persists it', async ({ browser }) => {
@@ -25,4 +25,5 @@ test('drag and drop moves a card to another column and persists it', async ({ br
   await page.reload()
   await expect(column_(page, 'In Progress').getByText(title)).toBeVisible()
   await expect(column_(page, 'To Do').getByText(title)).toHaveCount(0)
+  expect(cspViolations).toEqual([])
 })

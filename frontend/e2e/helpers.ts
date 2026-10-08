@@ -7,9 +7,16 @@ export function emailFor(name: string) {
   return `${name.toLowerCase().replace(/\s+/g, '.')}.${RUN}@e2e.test`
 }
 
+/** Content-Security-Policy violations reported by any page opened through newPage (the nginx build sends a CSP). */
+export const cspViolations: string[] = []
+
 export async function newPage(browser: Browser) {
   const context = await browser.newContext()
-  return context.newPage()
+  const page = await context.newPage()
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('Content Security Policy')) cspViolations.push(message.text())
+  })
+  return page
 }
 
 export async function register(page: Page, name: string, email: string) {
