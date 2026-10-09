@@ -208,10 +208,6 @@ public class ProjectService {
 		members.flush();
 	}
 
-	public long countOwnedBy(UUID userId) {
-		return projects.countByOwnerId(userId);
-	}
-
 	@Transactional
 	public void touch(UUID projectId) {
 		projects.touch(projectId, clock.instant());
