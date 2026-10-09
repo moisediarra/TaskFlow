@@ -72,6 +72,12 @@ public class User {
 		this.jobTitle = blankToNull(jobTitle);
 	}
 
+	/** Account details an IT Manager can correct; the email is the sign-in name. */
+	public void updateDetails(String name, String email, String jobTitle) {
+		updateProfile(name, jobTitle);
+		this.email = Emails.normalize(email);
+	}
+
 	public void changePasswordHash(String passwordHash) {
 		this.passwordHash = passwordHash;
 	}

@@ -68,6 +68,28 @@ public class UserService {
 	}
 
 	@Transactional
+	public User updateDetails(UUID userId, String name, String email, String jobTitle) {
+		User user = getById(userId);
+		users.findByEmail(Emails.normalize(email))
+			.filter(other -> !other.getId().equals(userId))
+			.ifPresent(other -> {
+				throw new ConflictException("EMAIL_TAKEN", "An account with this email already exists.", "email");
+			});
+		user.updateDetails(name, email, jobTitle);
+		return user;
+	}
+
+	/**
+	 * Removes the account row. Callers first take the user out of their projects; the database then deletes
+	 * their sessions and notifications, unassigns their tasks and keeps their activity history without a link.
+	 */
+	@Transactional
+	public void delete(UUID userId) {
+		users.delete(getById(userId));
+		users.flush();
+	}
+
+	@Transactional
 	public void changePasswordHash(UUID userId, String passwordHash) {
 		getById(userId).changePasswordHash(passwordHash);
 	}
