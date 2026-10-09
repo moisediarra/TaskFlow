@@ -7,7 +7,7 @@ import java.util.Map;
 import com.xdsdata.taskflow.common.error.BadRequestException;
 
 /** Password rules: 8 to 72 characters (bcrypt only uses the first 72 bytes), confirmed by a second entry. */
-final class PasswordPolicy {
+public final class PasswordPolicy {
 
 	static final int MIN_LENGTH = 8;
 
@@ -16,7 +16,7 @@ final class PasswordPolicy {
 	private PasswordPolicy() {
 	}
 
-	static void validate(String password, String confirmation, String passwordField, String confirmationField) {
+	public static void validate(String password, String confirmation, String passwordField, String confirmationField) {
 		Map<String, String> errors = new LinkedHashMap<>();
 		if (password == null || password.length() < MIN_LENGTH) {
 			errors.put(passwordField, "Password must be at least 8 characters.");
