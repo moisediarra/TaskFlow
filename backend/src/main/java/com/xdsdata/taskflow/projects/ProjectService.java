@@ -188,6 +188,30 @@ public class ProjectService {
 		touch(projectId);
 	}
 
+	/**
+	 * Takes a user out of every project they are a member of, before their account is deleted. Each removal is
+	 * logged and unassigns their tasks, as when an owner removes them. Callers authorize the IT Manager and
+	 * make sure the user owns no project (owners can't be removed).
+	 */
+	@Transactional
+	public void removeFromAllProjects(AuthUser actor, UUID userId) {
+		for (ProjectMember member : members.findByUserWithProject(userId)) {
+			if (member.getRole() == ProjectRole.OWNER) {
+				throw new BadRequestException("CANNOT_REMOVE_OWNER", "The project owner can't be removed.");
+			}
+			Project project = member.getProject();
+			events.publishEvent(new ProjectMemberRemoved(actor, project.getId(), project.getName(), userId,
+					member.getUser().getName()));
+			members.delete(member);
+			touch(project.getId());
+		}
+		members.flush();
+	}
+
+	public long countOwnedBy(UUID userId) {
+		return projects.countByOwnerId(userId);
+	}
+
 	@Transactional
 	public void touch(UUID projectId) {
 		projects.touch(projectId, clock.instant());
