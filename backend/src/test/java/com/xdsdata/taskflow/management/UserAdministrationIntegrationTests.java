@@ -1,5 +1,6 @@
 package com.xdsdata.taskflow.management;
 
+import java.util.Map;
 import java.util.UUID;
 
 import com.xdsdata.taskflow.common.Role;
@@ -8,6 +9,7 @@ import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
@@ -147,14 +149,12 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 			.andExpect(jsonPath("$.items[0].metadata.email").value(leaver.email()));
 	}
 
-	private static java.util.Map<String, Object> newUser(String name, String email, String password,
-			String currentPassword) {
+	private static Map<String, Object> newUser(String name, String email, String password, String currentPassword) {
 		return body("name", name, "email", email, "jobTitle", "Developer", "role", "MEMBER", "password", password,
 				"confirmPassword", password, "currentPassword", currentPassword);
 	}
 
-	private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder deleteUser(Session actor,
-			UUID userId, String currentPassword) {
+	private MockHttpServletRequestBuilder deleteUser(Session actor, UUID userId, String currentPassword) {
 		return as(actor, delete("/api/management/users/{id}", userId)).contentType(MediaType.APPLICATION_JSON)
 			.content(toJson(body("currentPassword", currentPassword)));
 	}
