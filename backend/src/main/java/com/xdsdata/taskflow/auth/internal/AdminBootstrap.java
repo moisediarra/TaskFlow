@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Self-registration never grants IT Manager rights, so the first IT Manager is created from
- * APP_BOOTSTRAP_ADMIN_EMAIL / APP_BOOTSTRAP_ADMIN_PASSWORD when that account does not exist yet.
+ * APP_BOOTSTRAP_ADMIN_EMAIL / APP_BOOTSTRAP_ADMIN_PASSWORD while no active IT Manager exists.
  */
 @Component
 @Order(1)
