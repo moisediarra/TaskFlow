@@ -21,6 +21,12 @@ import com.xdsdata.taskflow.management.internal.ManagementDtos.WorkItemDto;
 import com.xdsdata.taskflow.management.internal.ManagementDtos.WorkloadDto;
 import com.xdsdata.taskflow.management.internal.ManagementService.DueFilter;
 import com.xdsdata.taskflow.management.internal.ManagementService.TeamActivityFilter;
+import com.xdsdata.taskflow.management.internal.UserAdminRequests.ChangeRoleRequest;
+import com.xdsdata.taskflow.management.internal.UserAdminRequests.ChangeStatusRequest;
+import com.xdsdata.taskflow.management.internal.UserAdminRequests.CreateUserRequest;
+import com.xdsdata.taskflow.management.internal.UserAdminRequests.DeleteUserRequest;
+import com.xdsdata.taskflow.management.internal.UserAdminRequests.ResetPasswordRequest;
+import com.xdsdata.taskflow.management.internal.UserAdminRequests.UpdateUserRequest;
 import com.xdsdata.taskflow.projects.ProjectDtos.ProjectSummaryDto;
 import com.xdsdata.taskflow.projects.ProjectService;
 import com.xdsdata.taskflow.tasks.TaskPriority;
@@ -29,19 +35,22 @@ import com.xdsdata.taskflow.users.UserStatus;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /** IT Management endpoints; restricted to IT Managers here and at URL level. */
@@ -112,6 +121,18 @@ class ManagementController {
 		return management.user(userId);
 	}
 
+	@PostMapping("/users")
+	@ResponseStatus(HttpStatus.CREATED)
+	UserRowDto createUser(@AuthenticationPrincipal AuthUser actor, @Valid @RequestBody CreateUserRequest request) {
+		return userAdmin.create(actor, request);
+	}
+
+	@PutMapping("/users/{userId}")
+	UserRowDto updateUser(@AuthenticationPrincipal AuthUser actor, @PathVariable UUID userId,
+			@Valid @RequestBody UpdateUserRequest request) {
+		return userAdmin.updateDetails(actor, userId, request);
+	}
+
 	@PatchMapping("/users/{userId}/role")
 	UserRowDto changeRole(@AuthenticationPrincipal AuthUser actor, @PathVariable UUID userId,
 			@Valid @RequestBody ChangeRoleRequest request) {
@@ -124,19 +145,25 @@ class ManagementController {
 		return userAdmin.changeStatus(actor, userId, request.status(), request.currentPassword());
 	}
 
+	@PostMapping("/users/{userId}/password")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void resetPassword(@AuthenticationPrincipal AuthUser actor, @PathVariable UUID userId,
+			@Valid @RequestBody ResetPasswordRequest request) {
+		userAdmin.resetPassword(actor, userId, request.newPassword(), request.confirmPassword(), request.currentPassword());
+	}
+
+	@DeleteMapping("/users/{userId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void deleteUser(@AuthenticationPrincipal AuthUser actor, @PathVariable UUID userId,
+			@Valid @RequestBody DeleteUserRequest request) {
+		userAdmin.delete(actor, userId, request.currentPassword());
+	}
+
 	@GetMapping("/projects")
 	PageResponse<ProjectSummaryDto> projects(@AuthenticationPrincipal AuthUser viewer,
 			@RequestParam(required = false) String q, @RequestParam(defaultValue = "0") @Min(0) int page,
 			@RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
 		return projects.searchAll(viewer, q, PageRequest.of(page, size, Sort.by(Sort.Order.desc("updatedAt"))));
-	}
-
-	record ChangeRoleRequest(@NotNull(message = "Role is required.") Role role,
-			@NotBlank(message = "Enter your password to confirm.") String currentPassword) {
-	}
-
-	record ChangeStatusRequest(@NotNull(message = "Status is required.") UserStatus status,
-			@NotBlank(message = "Enter your password to confirm.") String currentPassword) {
 	}
 
 }
