@@ -3,6 +3,7 @@ package com.xdsdata.taskflow.auth.internal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.UUID;
 
 import com.xdsdata.taskflow.common.AppProperties;
 import com.xdsdata.taskflow.common.Emails;
