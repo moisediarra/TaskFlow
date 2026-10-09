@@ -45,7 +45,9 @@ class AdminBootstrap implements ApplicationRunner {
 			}
 			return;
 		}
-		if (users.findByEmail(email).isPresent()) {
+		// Only the first IT Manager comes from the environment: once one exists, accounts are managed in the app,
+		// and a bootstrap account an IT Manager renamed or deleted must not come back at the next start.
+		if (users.anyItManagerExists() || users.findByEmail(email).isPresent()) {
 			return;
 		}
 		if (password.length() < PasswordPolicy.MIN_LENGTH) {
