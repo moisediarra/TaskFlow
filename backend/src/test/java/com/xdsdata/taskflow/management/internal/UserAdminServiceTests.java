@@ -8,6 +8,7 @@ import com.xdsdata.taskflow.auth.AccountSecurity;
 import com.xdsdata.taskflow.common.AuthUser;
 import com.xdsdata.taskflow.common.Role;
 import com.xdsdata.taskflow.common.error.ConflictException;
+import com.xdsdata.taskflow.projects.ProjectService;
 import com.xdsdata.taskflow.users.User;
 import com.xdsdata.taskflow.users.UserService;
 import com.xdsdata.taskflow.users.UserStatus;
@@ -24,7 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** TaskFlow always keeps at least one active IT Manager (claude.md §31). */
+/** TaskFlow always keeps at least one active IT Manager, and deleting an account never orphans projects. */
 @ExtendWith(MockitoExtension.class)
 class UserAdminServiceTests {
 
@@ -39,6 +40,9 @@ class UserAdminServiceTests {
 
 	@Mock
 	private ManagementService management;
+
+	@Mock
+	private ProjectService projects;
 
 	@InjectMocks
 	private UserAdminService userAdmin;
@@ -64,6 +68,31 @@ class UserAdminServiceTests {
 		assertThatThrownBy(() -> userAdmin.changeStatus(actor, last.getId(), UserStatus.DEACTIVATED, "password"))
 			.isInstanceOf(ConflictException.class);
 		verify(accountSecurity, never()).revokeAllSessions(any());
+	}
+
+	@Test
+	void theLastActiveItManagerCannotBeDeleted() {
+		User last = itManager();
+		when(users.getById(last.getId())).thenReturn(last);
+		when(users.lockActiveItManagers()).thenReturn(List.of(last));
+		assertThatThrownBy(() -> userAdmin.delete(actor, last.getId(), "password"))
+			.isInstanceOf(ConflictException.class)
+			.hasMessageContaining("at least one active IT Manager");
+		verify(projects, never()).removeFromAllProjects(any(), any());
+		verify(users, never()).delete(any());
+	}
+
+	@Test
+	void projectOwnersAreNotDeletedSoTheirProjectsKeepAnOwner() {
+		User owner = mock(User.class);
+		UUID ownerId = UUID.randomUUID();
+		when(owner.getName()).thenReturn("Olivia");
+		when(users.getById(ownerId)).thenReturn(owner);
+		when(management.ownedProjectCount(ownerId)).thenReturn(2L);
+		assertThatThrownBy(() -> userAdmin.delete(actor, ownerId, "password"))
+			.isInstanceOf(ConflictException.class)
+			.hasMessage("Olivia owns 2 projects. Delete them first, or deactivate the account instead.");
+		verify(users, never()).delete(any());
 	}
 
 	private static User itManager() {
