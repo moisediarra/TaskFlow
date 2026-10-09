@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Public API of the users module. Authorization of account administration (details, role, status, deletion) is the caller's
- * responsibility (the management module).
+ * Public API of the users module. Authorization of account administration (details, role, status,
+ * deletion) is the caller's responsibility (the management module).
  */
 @Service
 @Transactional(readOnly = true)

@@ -79,6 +79,12 @@ public class PasswordResetService {
 		refreshTokens.revokeAll(user.getId());
 	}
 
+	/** Makes every reset link already sent to the user unusable. */
+	@Transactional
+	public void invalidateOutstanding(UUID userId) {
+		resetTokens.invalidateOutstanding(userId, clock.instant());
+	}
+
 	@Scheduled(cron = "0 40 3 * * *")
 	@Transactional
 	public void purgeExpired() {
