@@ -45,6 +45,16 @@ test.describe.serial('responsive layout', () => {
         const management = ['/management', '/management/team-activity', '/management/workload',
           '/management/activity-logs', '/management/users', '/management/projects']
         for (const path of management) await visit(it, width, path, testInfo.outputPath(`${width}-${slug(path, projectId)}.png`))
+
+        // Account administration: the Add user dialog, and a person's page with its Account section.
+        await it.getByRole('button', { name: 'Add user' }).click()
+        await expect(it.getByRole('dialog')).toBeVisible()
+        await expectFits(it, width, 'add user dialog', testInfo.outputPath(`${width}-add-user.png`))
+        await it.keyboard.press('Escape')
+        await it.getByRole('textbox', { name: 'Search' }).fill('Rita Responsive')
+        await it.getByRole('row').filter({ hasText: `Rita Responsive ${RUN}` }).click()
+        await expect(it.getByRole('heading', { name: 'Account' })).toBeVisible()
+        await expectFits(it, width, 'user page', testInfo.outputPath(`${width}-user.png`))
         await itContext.close()
       }
     })
