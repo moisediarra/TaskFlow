@@ -101,7 +101,7 @@ test('account administration explains what went wrong', async ({ browser }) => {
   await add.getByRole('button', { name: 'Cancel' }).click()
 
   // A project owner can't be deleted; the page says why and offers deactivation instead.
-  await it.getByLabel('Search').fill(ownerName)
+  await it.getByRole('textbox', { name: 'Search' }).fill(ownerName)
   await it.getByRole('row').filter({ hasText: ownerName }).click()
   await expect(it.getByRole('heading', { level: 1, name: ownerName })).toBeVisible()
   await expect(it.getByRole('button', { name: 'Delete account' })).toBeDisabled()
