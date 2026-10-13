@@ -22,6 +22,12 @@ export function onSessionExpired(handler: () => void) {
   sessionExpiredHandler = handler
 }
 
+/** Ends the browser session when the server no longer accepts it (e.g. after a password reset). */
+export function expireSession() {
+  accessToken = null
+  sessionExpiredHandler?.()
+}
+
 /** Error with a user-friendly message; raw technical details are never shown (claude.md §37). */
 export class ApiError extends Error {
   readonly status: number
