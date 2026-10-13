@@ -54,6 +54,8 @@ public abstract class IntegrationTest {
 
 	protected static final String REFRESH_COOKIE = "tf_refresh";
 
+	private static final Pattern RESET_TOKEN = Pattern.compile("reset-password\\?token=([A-Za-z0-9_-]+)");
+
 	@Autowired
 	protected MockMvc mvc;
 
