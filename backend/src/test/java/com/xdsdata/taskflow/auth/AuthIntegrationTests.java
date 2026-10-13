@@ -1,10 +1,5 @@
 package com.xdsdata.taskflow.auth;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.xdsdata.taskflow.common.Role;
 import com.xdsdata.taskflow.support.IntegrationTest;
 import jakarta.servlet.http.Cookie;
@@ -25,8 +20,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(OutputCaptureExtension.class)
 class AuthIntegrationTests extends IntegrationTest {
-
-	private static final Pattern RESET_TOKEN = Pattern.compile("reset-password\\?token=([A-Za-z0-9_-]+)");
 
 	@Test
 	void registrationCreatesProjectOwnerAndLoginStartsASession() throws Exception {
@@ -198,6 +191,13 @@ class AuthIntegrationTests extends IntegrationTest {
 			.andExpect(jsonPath("$.code").value("ACCOUNT_DEACTIVATED"));
 		mvc.perform(post("/api/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, member.refreshToken())))
 			.andExpect(status().isUnauthorized());
+
+		// Reactivation doesn't revive the sessions from before: the person signs in again.
+		mvc.perform(patchAs(itManager, "/api/management/users/{id}/status",
+				body("status", "ACTIVE", "currentPassword", PASSWORD), member.userId()))
+			.andExpect(status().isOk());
+		mvc.perform(getAs(member, "/api/auth/me")).andExpect(status().isUnauthorized());
+		login(member.email(), PASSWORD);
 	}
 
 	@Test
