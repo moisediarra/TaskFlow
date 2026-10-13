@@ -15,10 +15,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.UpdateTimestamp;
 
+/**
+ * A TaskFlow account. Updates write only the changed columns, so concurrent changes to different fields
+ * (an IT Manager deactivating someone while they edit their profile) never undo each other.
+ */
 @Entity
 @Table(name = "users")
+@DynamicUpdate
 public class User {
 
 	@Id
@@ -47,6 +53,10 @@ public class User {
 
 	@Column(length = 500)
 	private String avatar;
+
+	/** Stamped into every access and refresh token; incrementing it signs the user out everywhere. */
+	@Column(name = "session_version", nullable = false)
+	private int sessionVersion;
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -88,6 +98,10 @@ public class User {
 
 	public void changeStatus(UserStatus status) {
 		this.status = status;
+	}
+
+	public void endSessions() {
+		this.sessionVersion++;
 	}
 
 	public boolean isActive() {
@@ -132,6 +146,10 @@ public class User {
 
 	public String getAvatar() {
 		return avatar;
+	}
+
+	public int getSessionVersion() {
+		return sessionVersion;
 	}
 
 	public Instant getCreatedAt() {
