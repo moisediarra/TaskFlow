@@ -35,18 +35,22 @@ public class AuthService {
 
 	private final RateLimiter rateLimiter;
 
+	private final PasswordConfirmations passwordConfirmations;
+
 	private final AppProperties properties;
 
 	/** Compared against when the email is unknown, so both cases take the same time. */
 	private final String timingEqualizerHash;
 
 	AuthService(UserService users, PasswordEncoder passwordEncoder, AccessTokenService accessTokens,
-			RefreshTokenService refreshTokens, RateLimiter rateLimiter, AppProperties properties) {
+			RefreshTokenService refreshTokens, RateLimiter rateLimiter, PasswordConfirmations passwordConfirmations,
+			AppProperties properties) {
 		this.users = users;
 		this.passwordEncoder = passwordEncoder;
 		this.accessTokens = accessTokens;
 		this.refreshTokens = refreshTokens;
 		this.rateLimiter = rateLimiter;
+		this.passwordConfirmations = passwordConfirmations;
 		this.properties = properties;
 		this.timingEqualizerHash = passwordEncoder.encode("timing-equalizer-not-a-real-password");
 	}
