@@ -70,6 +70,46 @@ test('IT Manager adds, edits, resets the password of and deletes an account', as
   expect(cspViolations).toEqual([])
 })
 
+test('account administration explains what went wrong', async ({ browser }) => {
+  test.skip(!IT_EMAIL || !IT_PASSWORD, 'Set E2E_IT_EMAIL and E2E_IT_PASSWORD to an IT Manager account')
+  const ownerName = `Oscar Owner ${RUN}`
+  const ownerEmail = emailFor('oscar')
+  const owner = await newPage(browser)
+  await register(owner, ownerName, ownerEmail)
+  await login(owner, ownerEmail)
+  await createProject(owner, `Oscar's project ${RUN}`)
+
+  const it = await newPage(browser)
+  await login(it, IT_EMAIL!, IT_PASSWORD!)
+  await it.goto('/management/users')
+  await it.getByRole('button', { name: 'Add user' }).click()
+  const add = it.getByRole('dialog')
+  await add.getByLabel('Full name').fill('Someone Twice')
+  await add.getByLabel('Email').fill(ownerEmail)
+  await add.getByLabel('Starting password').fill(STARTER)
+  await add.getByLabel('Confirm password').fill(STARTER)
+
+  // The IT Manager's password is checked first, and the error lands under that field.
+  await add.getByLabel('Your password').fill('not-my-password')
+  await add.getByRole('button', { name: 'Create account' }).click()
+  await expect(add.getByText('Your password is incorrect.')).toBeVisible()
+
+  // Then the email that is already taken is pointed out under Email.
+  await add.getByLabel('Your password').fill(IT_PASSWORD!)
+  await add.getByRole('button', { name: 'Create account' }).click()
+  await expect(add.getByText('An account with this email already exists.')).toBeVisible()
+  await add.getByRole('button', { name: 'Cancel' }).click()
+
+  // A project owner can't be deleted; the page says why and offers deactivation instead.
+  await it.getByLabel('Search').fill(ownerName)
+  await it.getByRole('row').filter({ hasText: ownerName }).click()
+  await expect(it.getByRole('heading', { level: 1, name: ownerName })).toBeVisible()
+  await expect(it.getByRole('button', { name: 'Delete account' })).toBeDisabled()
+  await expect(it.getByText(`${ownerName} owns 1 project, so the account can't be deleted. Deactivate it instead.`)).toBeVisible()
+  await expect(it.getByRole('button', { name: 'Deactivate' })).toBeEnabled()
+  expect(cspViolations).toEqual([])
+})
+
 async function expectSignInRefused(browser: Browser, email: string, password: string) {
   const page = await newPage(browser)
   await page.goto('/login')
