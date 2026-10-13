@@ -83,6 +83,7 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 
 		login(newEmail, PASSWORD);
 		expectSignInFails(target.email(), PASSWORD);
+		expectResetLinkRefused(staleLink);
 		mvc.perform(getAs(itManager, "/api/management/activity-logs?action=USER_UPDATED&q={q}", "Typo Nmae"))
 			.andExpect(jsonPath("$.items[0].metadata.targetUserId").value(target.userId().toString()))
 			.andExpect(jsonPath("$.items[0].metadata.previousEmail").value(target.email()))
@@ -90,9 +91,15 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 	}
 
 	@Test
-	void passwordResetReplacesThePasswordAndEndsSessions() throws Exception {
+	void passwordResetReplacesThePasswordAndEndsSessions(CapturedOutput output) throws Exception {
 		Session itManager = createUser("Reset Admin", Role.IT_MANAGER);
 		Session target = register("Forgetful Person");
+		// Another tab has just rotated the refresh token, so the original is inside its reuse grace period.
+		MvcResult rotated = mvc.perform(post("/api/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, target.refreshToken())))
+			.andExpect(status().isOk())
+			.andReturn();
+		String rotatedToken = rotated.getResponse().getCookie(REFRESH_COOKIE).getValue();
+		String emailedLink = requestResetLink(output, target.email());
 
 		mvc.perform(postAs(itManager, "/api/management/users/{id}/password",
 				body("newPassword", STARTER, "confirmPassword", "different-1", "currentPassword", PASSWORD), target.userId()))
@@ -108,8 +115,15 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 
 		expectSignInFails(target.email(), PASSWORD);
 		login(target.email(), STARTER);
-		mvc.perform(post("/api/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, target.refreshToken())))
-			.andExpect(status().isUnauthorized());
+
+		// Signed out everywhere: the access token, both refresh tokens (even inside the reuse grace) and the
+		// reset link already emailed all stop working.
+		mvc.perform(getAs(target, "/api/auth/me")).andExpect(status().isUnauthorized());
+		for (String refreshToken : new String[] { target.refreshToken(), rotatedToken }) {
+			mvc.perform(post("/api/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, refreshToken)))
+				.andExpect(status().isUnauthorized());
+		}
+		expectResetLinkRefused(emailedLink);
 		mvc.perform(getAs(itManager, "/api/management/activity-logs?action=USER_PASSWORD_RESET&q={q}", "Forgetful"))
 			.andExpect(jsonPath("$.items[0].metadata.targetUserId").value(target.userId().toString()));
 	}
@@ -128,7 +142,9 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 
 		mvc.perform(deleteUser(itManager, owner.userId(), PASSWORD))
 			.andExpect(status().isConflict())
-			.andExpect(jsonPath("$.code").value("OWNS_PROJECTS"));
+			.andExpect(jsonPath("$.code").value("OWNS_PROJECTS"))
+			.andExpect(jsonPath("$.detail").value("Keeper Owner owns 1 project, so the account can't be deleted. "
+					+ "Deactivate it instead."));
 		mvc.perform(deleteUser(itManager, itManager.userId(), PASSWORD))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.code").value("CANNOT_CHANGE_SELF"));
@@ -155,7 +171,48 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 			.andExpect(jsonPath("$.items[*].actorName", hasItem(leaverName)));
 		mvc.perform(getAs(itManager, "/api/management/activity-logs?action=USER_DELETED&q={q}", leaverName))
 			.andExpect(jsonPath("$.items[0].metadata.targetUserName").value(leaverName))
-			.andExpect(jsonPath("$.items[0].metadata.email").value(leaver.email()));
+			.andExpect(jsonPath("$.items[0].metadata.email").doesNotExist());
+	}
+
+	@Test
+	void deletingSomeoneInSeveralProjectsUnassignsAndLogsEachOne() throws Exception {
+		Session itManager = createUser("Cleanup Admin", Role.IT_MANAGER);
+		Session firstOwner = register("First Owner");
+		Session secondOwner = register("Second Owner");
+		String name = "Busy Leaver " + UUID.randomUUID().toString().substring(0, 6);
+		Session leaver = register(name);
+		UUID first = createProject(firstOwner, "First project");
+		UUID second = createProject(secondOwner, "Second project");
+		addMember(firstOwner, first, leaver);
+		addMember(secondOwner, second, leaver);
+		UUID open = createTask(firstOwner, first, body("title", "Open work", "status", "TODO", "assigneeId", leaver.userId()));
+		UUID done = createTask(secondOwner, second, body("title", "Done work", "status", "DONE", "assigneeId", leaver.userId()));
+
+		mvc.perform(deleteUser(itManager, leaver.userId(), PASSWORD)).andExpect(status().isNoContent());
+
+		mvc.perform(getAs(firstOwner, "/api/tasks/{id}", open)).andExpect(jsonPath("$.assignee").doesNotExist());
+		mvc.perform(getAs(secondOwner, "/api/tasks/{id}", done))
+			.andExpect(jsonPath("$.status").value("DONE"))
+			.andExpect(jsonPath("$.assignee").doesNotExist());
+		for (Session owner : new Session[] { firstOwner, secondOwner }) {
+			UUID projectId = owner == firstOwner ? first : second;
+			mvc.perform(getAs(owner, "/api/projects/{id}/activity", projectId))
+				.andExpect(jsonPath("$.items[*].action", hasItem("PROJECT_MEMBER_REMOVED")))
+				.andExpect(jsonPath("$.items[*].action", hasItem("TASK_UNASSIGNED")));
+		}
+		// Nobody was notified about the deletion's side effects: the person no longer exists.
+		mvc.perform(getAs(firstOwner, "/api/notifications"))
+			.andExpect(jsonPath("$.items[*].type", everyItem(startsWith("TASK_"))));
+	}
+
+	@Test
+	void anotherItManagerCanBeDeletedWhileOneRemains() throws Exception {
+		Session itManager = createUser("Remaining Admin", Role.IT_MANAGER);
+		Session other = createUser("Departing Admin", Role.IT_MANAGER);
+
+		mvc.perform(deleteUser(itManager, other.userId(), PASSWORD)).andExpect(status().isNoContent());
+		mvc.perform(getAs(other, "/api/management/overview")).andExpect(status().isUnauthorized());
+		mvc.perform(getAs(itManager, "/api/management/overview")).andExpect(status().isOk());
 	}
 
 	private static Map<String, Object> newUser(String name, String email, String password, String currentPassword) {
@@ -171,6 +228,19 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 	private void expectSignInFails(String email, String password) throws Exception {
 		mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
 			.content(toJson(body("email", email, "password", password)))).andExpect(status().isUnauthorized());
+	}
+
+	private String requestResetLink(CapturedOutput output, String email) throws Exception {
+		mvc.perform(post("/api/auth/forgot-password").contentType(MediaType.APPLICATION_JSON)
+			.content(toJson(body("email", email)))).andExpect(status().isAccepted());
+		return awaitResetToken(output, email);
+	}
+
+	private void expectResetLinkRefused(String token) throws Exception {
+		mvc.perform(post("/api/auth/reset-password").contentType(MediaType.APPLICATION_JSON)
+			.content(toJson(body("token", token, "password", "Taken-over-1", "confirmPassword", "Taken-over-1"))))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.code").value("INVALID_RESET_TOKEN"));
 	}
 
 }
