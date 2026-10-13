@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router'
-import { ChevronLeft, ShieldCheck, UserCheck, UserX } from 'lucide-react'
+import { Link, useNavigate, useParams } from 'react-router'
+import { ChevronLeft, KeyRound, ShieldCheck, Trash2, UserCheck, UserPen, UserX } from 'lucide-react'
 import { toast } from 'sonner'
 import { managementApi } from '@/api/endpoints'
 import type { Role } from '@/api/types'
@@ -13,20 +13,25 @@ import { ErrorState } from '@/components/common/states'
 import { UserAvatar } from '@/components/common/UserAvatar'
 import { useCurrentUser } from '@/features/auth/use-auth'
 import { formatLongDay, pluralize } from '@/lib/format'
-import { ROLES, ROLE_LABEL } from '@/lib/labels'
+import { ROLES, ROLE_HINT, ROLE_LABEL } from '@/lib/labels'
 import { queryKeys } from '@/lib/query-keys'
 import { AccountStatusBadge } from './AccountStatusBadge'
 import { ConfirmWithPasswordDialog } from './ConfirmWithPasswordDialog'
+import { ResetPasswordDialog } from './ResetPasswordDialog'
+import { UserFormDialog } from './UserFormDialog'
 import { WorkItemList } from './WorkItemList'
 
-type PendingChange = { kind: 'role'; role: Role } | { kind: 'status'; activate: boolean }
+type PendingChange = { kind: 'role'; role: Role } | { kind: 'status'; activate: boolean } | { kind: 'delete' }
 
-/** A user's projects and assigned tasks, with role and account controls for the IT Manager. */
+/** A user's projects and assigned tasks, with the IT Manager's account administration (claude.md §31). */
 export function UserDetailPage() {
   const { userId = '' } = useParams()
   const me = useCurrentUser()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [pending, setPending] = useState<PendingChange | null>(null)
+  const [editing, setEditing] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const detail = useQuery({ queryKey: queryKeys.management.user(userId), queryFn: () => managementApi.user(userId) })
 
   if (detail.isPending) return <Skeleton className="h-80 rounded-xl" />
@@ -37,6 +42,15 @@ export function UserDetailPage() {
 
   const apply = async (password: string) => {
     if (!pending) return
+    if (pending.kind === 'delete') {
+      await managementApi.deleteUser(user.id, password)
+      toast.success(`${user.name}'s account was deleted.`)
+      // Leave the page first, so nothing refetches the account that no longer exists.
+      await navigate('/management/users', { replace: true })
+      queryClient.removeQueries({ queryKey: queryKeys.management.user(user.id) })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.management.all })
+      return
+    }
     if (pending.kind === 'role') {
       await managementApi.changeRole(user.id, pending.role, password)
       toast.success(`${user.name} is now ${ROLE_LABEL[pending.role]}.`)
@@ -69,33 +83,9 @@ export function UserDetailPage() {
               <span>Joined {formatLongDay(user.createdAt)}</span>
             </div>
           </div>
-          {isSelf ? (
-            <p className="text-sm text-muted-foreground">You can't change your own role or status.</p>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <Select value={user.role} onValueChange={(role) => role !== user.role && setPending({ kind: 'role', role: role as Role })}>
-                <SelectTrigger className="w-44" aria-label="Change role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {ROLE_LABEL[role]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {active ? (
-                <Button variant="destructive" onClick={() => setPending({ kind: 'status', activate: false })}>
-                  <UserX /> Deactivate
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => setPending({ kind: 'status', activate: true })}>
-                  <UserCheck /> Reactivate
-                </Button>
-              )}
-            </div>
-          )}
+          <Button variant="outline" onClick={() => setEditing(true)}>
+            <UserPen /> Edit details
+          </Button>
         </div>
       </div>
 
@@ -130,18 +120,84 @@ export function UserDetailPage() {
         </section>
       </div>
 
+      <section className="rounded-xl border bg-card shadow-xs" aria-labelledby="account-heading">
+        <div className="px-5 pt-5">
+          <h2 id="account-heading" className="font-semibold">
+            Account
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">Each change asks for your password and is recorded in the activity log.</p>
+        </div>
+        {isSelf ? (
+          <p className="px-5 pt-3 pb-5 text-sm text-muted-foreground">
+            This is your account. Change your password from your{' '}
+            <Link to="/profile" className="font-medium text-foreground underline-offset-4 hover:underline">
+              profile
+            </Link>
+            . Another IT Manager can change your role or status.
+          </p>
+        ) : (
+          <ul className="mt-2 divide-y">
+            <AccountRow title="Role" description={ROLE_HINT[user.role]}>
+              <Select value={user.role} onValueChange={(role) => role !== user.role && setPending({ kind: 'role', role: role as Role })}>
+                <SelectTrigger className="w-44" aria-label="Change role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {ROLE_LABEL[role]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </AccountRow>
+            <AccountRow title="Password" description={`Set a new password and sign ${user.name} out everywhere.`}>
+              <Button variant="outline" onClick={() => setResetting(true)}>
+                <KeyRound /> Reset password
+              </Button>
+            </AccountRow>
+            <AccountRow
+              title={active ? 'Deactivate' : 'Reactivate'}
+              description={
+                active
+                  ? "They can no longer sign in until reactivated. Their tasks and history are kept."
+                  : 'This account is deactivated and cannot sign in.'
+              }
+            >
+              {active ? (
+                <Button variant="outline" onClick={() => setPending({ kind: 'status', activate: false })}>
+                  <UserX /> Deactivate
+                </Button>
+              ) : (
+                <Button variant="outline" onClick={() => setPending({ kind: 'status', activate: true })}>
+                  <UserCheck /> Reactivate
+                </Button>
+              )}
+            </AccountRow>
+            <AccountRow
+              title="Delete account"
+              description={
+                ownedProjectCount > 0
+                  ? `${user.name} owns ${pluralize(ownedProjectCount, 'project')}. Delete ${ownedProjectCount === 1 ? 'it' : 'them'} first, or deactivate the account instead.`
+                  : 'Permanently removes the account. Their tasks stay in their projects, unassigned, and the activity history keeps their name.'
+              }
+            >
+              <Button variant="destructive" disabled={ownedProjectCount > 0} onClick={() => setPending({ kind: 'delete' })}>
+                <Trash2 /> Delete account
+              </Button>
+            </AccountRow>
+          </ul>
+        )}
+      </section>
+
+      <UserFormDialog open={editing} onOpenChange={setEditing} user={user} />
+      <ResetPasswordDialog open={resetting} onOpenChange={setResetting} user={user} />
       <ConfirmWithPasswordDialog
         open={pending !== null}
         onOpenChange={(open) => !open && setPending(null)}
-        destructive={pending?.kind === 'status' && !pending.activate}
-        title={
-          pending?.kind === 'role'
-            ? `Change ${user.name}'s role?`
-            : pending?.kind === 'status' && pending.activate
-              ? `Reactivate ${user.name}?`
-              : `Deactivate ${user.name}?`
-        }
-        confirmLabel={pending?.kind === 'role' ? 'Change role' : pending?.kind === 'status' && pending.activate ? 'Reactivate' : 'Deactivate'}
+        destructive={pending?.kind === 'delete' || (pending?.kind === 'status' && !pending.activate)}
+        title={confirmTitle(pending, user.name)}
+        confirmLabel={confirmLabel(pending)}
         description={
           pending?.kind === 'role' ? (
             <>
@@ -149,6 +205,15 @@ export function UserDetailPage() {
             </>
           ) : pending?.kind === 'status' && pending.activate ? (
             <>{user.name} will be able to sign in again.</>
+          ) : pending?.kind === 'delete' ? (
+            <div className="grid gap-2">
+              <p>
+                This can't be undone. {user.name} will be signed out
+                {projects.length > 0 ? ` and removed from ${pluralize(projects.length, 'project')}` : ''}.
+              </p>
+              <p>Their tasks stay in their projects, unassigned, and the activity history keeps their name.</p>
+              <p>To keep the account for later, deactivate it instead.</p>
+            </div>
           ) : (
             <div className="grid gap-2">
               <p>{user.name} will be signed out and can no longer sign in. Their tasks and history are kept.</p>
@@ -164,5 +229,32 @@ export function UserDetailPage() {
         onConfirm={apply}
       />
     </div>
+  )
+}
+
+function confirmTitle(pending: PendingChange | null, name: string) {
+  if (pending?.kind === 'role') return `Change ${name}'s role?`
+  if (pending?.kind === 'delete') return `Delete ${name}'s account?`
+  if (pending?.kind === 'status' && pending.activate) return `Reactivate ${name}?`
+  return `Deactivate ${name}?`
+}
+
+function confirmLabel(pending: PendingChange | null) {
+  if (pending?.kind === 'role') return 'Change role'
+  if (pending?.kind === 'delete') return 'Delete account'
+  if (pending?.kind === 'status' && pending.activate) return 'Reactivate'
+  return 'Deactivate'
+}
+
+/** One administrative action: what it does on the left, its control on the right (stacked on phones). */
+function AccountRow({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <li className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="shrink-0">{children}</div>
+    </li>
   )
 }
