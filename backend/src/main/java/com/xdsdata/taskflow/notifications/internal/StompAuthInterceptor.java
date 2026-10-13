@@ -3,6 +3,7 @@ package com.xdsdata.taskflow.notifications.internal;
 import java.security.Principal;
 import java.util.UUID;
 
+import com.xdsdata.taskflow.auth.SessionVersions;
 import com.xdsdata.taskflow.users.User;
 import com.xdsdata.taskflow.users.UserService;
 
@@ -76,7 +77,12 @@ class StompAuthInterceptor implements ChannelInterceptor {
 		catch (RuntimeException ex) {
 			throw new MessageDeliveryException("Invalid access token");
 		}
-		users.findById(userId).filter(User::isActive).orElseThrow(() -> new MessageDeliveryException("Account is not active"));
+		User user = users.findById(userId)
+			.filter(User::isActive)
+			.orElseThrow(() -> new MessageDeliveryException("Account is not active"));
+		if (!SessionVersions.isCurrent(jwt, user)) {
+			throw new MessageDeliveryException("Session ended");
+		}
 		return new StompPrincipal(userId.toString());
 	}
 
