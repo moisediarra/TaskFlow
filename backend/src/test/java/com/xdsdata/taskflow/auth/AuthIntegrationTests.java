@@ -165,12 +165,19 @@ class AuthIntegrationTests extends IntegrationTest {
 				body("currentPassword", "wrong", "newPassword", "Another-pass1", "confirmPassword", "Another-pass1")))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.fieldErrors.currentPassword").exists());
-		mvc.perform(postAs(session, "/api/users/me/password",
-				body("currentPassword", PASSWORD, "newPassword", "Another-pass1", "confirmPassword", "Another-pass1")))
+		MvcResult changed = mvc
+			.perform(postAs(session, "/api/users/me/password",
+					body("currentPassword", PASSWORD, "newPassword", "Another-pass1", "confirmPassword", "Another-pass1")))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.accessToken").isNotEmpty());
+			.andExpect(jsonPath("$.accessToken").isNotEmpty())
+			.andReturn();
+
+		// Every other session ends at once, access tokens included; this browser continues with the new session.
 		mvc.perform(post("/api/auth/refresh").cookie(new Cookie(REFRESH_COOKIE, otherDevice.refreshToken())))
 			.andExpect(status().isUnauthorized());
+		mvc.perform(getAs(otherDevice, "/api/auth/me")).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + read(changed, "$.accessToken")))
+			.andExpect(status().isOk());
 	}
 
 	@Test
@@ -199,23 +206,6 @@ class AuthIntegrationTests extends IntegrationTest {
 			.andExpect(status().isUnauthorized())
 			.andExpect(jsonPath("$.code").value("UNAUTHENTICATED"))
 			.andExpect(jsonPath("$.requestId").isNotEmpty());
-	}
-
-	/** The reset link is sent asynchronously and logged in the test profile. */
-	private String awaitResetToken(CapturedOutput output, String email) throws InterruptedException {
-		Instant deadline = Instant.now().plus(Duration.ofSeconds(10));
-		while (Instant.now().isBefore(deadline)) {
-			for (String line : output.getAll().split("\\R")) {
-				if (line.contains(email)) {
-					Matcher matcher = RESET_TOKEN.matcher(line);
-					if (matcher.find()) {
-						return matcher.group(1);
-					}
-				}
-			}
-			Thread.sleep(100);
-		}
-		throw new AssertionError("No password reset link was logged for " + email);
 	}
 
 }
