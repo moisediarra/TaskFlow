@@ -73,12 +73,13 @@ class UserAdminServiceTests {
 	@Test
 	void theLastActiveItManagerCannotBeDeleted() {
 		User last = itManager();
-		when(users.getById(last.getId())).thenReturn(last);
+		when(users.lockForUpdate(last.getId())).thenReturn(last);
 		when(users.lockActiveItManagers()).thenReturn(List.of(last));
 		assertThatThrownBy(() -> userAdmin.delete(actor, last.getId(), "password"))
 			.isInstanceOf(ConflictException.class)
 			.hasMessageContaining("at least one active IT Manager");
 		verify(projects, never()).removeFromAllProjects(any(), any());
+		verify(accountSecurity, never()).revokeAllSessions(any());
 		verify(users, never()).delete(any());
 	}
 
@@ -87,11 +88,11 @@ class UserAdminServiceTests {
 		User owner = mock(User.class);
 		UUID ownerId = UUID.randomUUID();
 		when(owner.getName()).thenReturn("Olivia");
-		when(users.getById(ownerId)).thenReturn(owner);
+		when(users.lockForUpdate(ownerId)).thenReturn(owner);
 		when(management.ownedProjectCount(ownerId)).thenReturn(2L);
 		assertThatThrownBy(() -> userAdmin.delete(actor, ownerId, "password"))
 			.isInstanceOf(ConflictException.class)
-			.hasMessage("Olivia owns 2 projects. Delete them first, or deactivate the account instead.");
+			.hasMessage("Olivia owns 2 projects, so the account can't be deleted. Deactivate it instead.");
 		verify(users, never()).delete(any());
 	}
 
