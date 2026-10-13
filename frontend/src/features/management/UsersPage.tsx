@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
-import { UserSearch } from 'lucide-react'
+import { UserPlus, UserSearch } from 'lucide-react'
 import { managementApi } from '@/api/endpoints'
 import type { Role, UserStatus } from '@/api/types'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -16,14 +17,16 @@ import { ROLES, ROLE_LABEL } from '@/lib/labels'
 import { queryKeys } from '@/lib/query-keys'
 import { useDebouncedValue } from '@/lib/use-debounced-value'
 import { AccountStatusBadge } from './AccountStatusBadge'
+import { UserFormDialog } from './UserFormDialog'
 
-/** Users page (claude.md §31): search, filter by role, open details. */
+/** Users page (claude.md §31): search, filter by role, open details, add accounts. */
 export function UsersPage() {
   const navigate = useNavigate()
   const [text, setText] = useState('')
   const [role, setRole] = useState<Role | undefined>()
   const [status, setStatus] = useState<UserStatus | undefined>()
   const [page, setPage] = useState(0)
+  const [adding, setAdding] = useState(false)
   const q = useDebouncedValue(text.trim(), 300)
   const filters = { q: q || undefined, role, status, page }
   const users = useQuery({
@@ -34,7 +37,15 @@ export function UsersPage() {
 
   return (
     <div>
-      <PageHeader title="Users" description="Everyone with a TaskFlow account." />
+      <PageHeader
+        title="Users"
+        description="Everyone with a TaskFlow account."
+        actions={
+          <Button onClick={() => setAdding(true)}>
+            <UserPlus /> Add user
+          </Button>
+        }
+      />
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="grid min-w-52 flex-1 gap-1 sm:max-w-xs">
           <Label htmlFor="user-search" className="text-xs text-muted-foreground">
@@ -128,6 +139,7 @@ export function UsersPage() {
           <Pagination page={users.data.page} totalPages={users.data.totalPages} totalItems={users.data.totalItems} onPageChange={setPage} />
         </div>
       )}
+      <UserFormDialog open={adding} onOpenChange={setAdding} onSaved={(user) => navigate(`/management/users/${user.id}`)} />
     </div>
   )
 }
