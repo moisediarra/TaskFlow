@@ -35,13 +35,15 @@ public class PasswordConfirmations {
 	/** @throws BadRequestException with a {@code currentPassword} field error carrying {@code message} */
 	public void verify(User user, String rawPassword, String message) {
 		String key = "confirm-password:" + user.getId();
-		if (rateLimiter.isExhausted(key, MAX_FAILURES, WINDOW)) {
+		// Counted before the (slow) check, so parallel guesses can't get past the limit; a right password is
+		// given back, so only wrong ones add up.
+		if (!rateLimiter.tryAcquire(key, MAX_FAILURES, WINDOW)) {
 			throw new TooManyRequestsException();
 		}
 		if (rawPassword == null || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
-			rateLimiter.tryAcquire(key, MAX_FAILURES, WINDOW);
 			throw BadRequestException.field("currentPassword", message);
 		}
+		rateLimiter.refund(key);
 	}
 
 }

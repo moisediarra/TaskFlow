@@ -46,6 +46,11 @@ class AdminBootstrap implements ApplicationRunner {
 			return;
 		}
 		if (users.findByEmail(email).isPresent()) {
+			if (!users.anyItManagerExists()) {
+				log.warn("APP_BOOTSTRAP_ADMIN_EMAIL {} belongs to an account that is not an active IT Manager, and no "
+						+ "active IT Manager exists. Nothing was changed; promote that account in the database or use "
+						+ "another email.", email);
+			}
 			return;
 		}
 		// Only the first IT Manager comes from the environment: once one exists, accounts are managed in the app,

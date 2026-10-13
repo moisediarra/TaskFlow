@@ -43,13 +43,13 @@ public class RateLimiter {
 		return current.count() <= limit;
 	}
 
-	/** Whether {@code key} already used its {@code limit} attempts in the current window; records nothing. */
-	public boolean isExhausted(String key, int limit, Duration window) {
+	/** Gives back one attempt recorded by {@link #tryAcquire}, for an attempt that turned out to be legitimate. */
+	public void refund(String key) {
 		if (!enabled) {
-			return false;
+			return;
 		}
-		Window current = windows.get(key);
-		return current != null && clock.millis() - current.start() < window.toMillis() && current.count() >= limit;
+		windows.computeIfPresent(key, (k, current) -> current.count() <= 1 ? null
+				: new Window(current.start(), current.count() - 1));
 	}
 
 	/** Like {@link #tryAcquire} but rejects the request with 429 when the limit is exceeded. */
