@@ -92,9 +92,7 @@ public class AuthService {
 	@Transactional
 	public Session changePassword(AuthUser actor, String currentPassword, String newPassword, String confirmation) {
 		User user = users.getById(actor.id());
-		if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
-			throw BadRequestException.field("currentPassword", "Your current password is incorrect.");
-		}
+		passwordConfirmations.verify(user, currentPassword, "Your current password is incorrect.");
 		PasswordPolicy.validate(newPassword, confirmation, "newPassword", "confirmPassword");
 		users.changePasswordHash(user.getId(), passwordEncoder.encode(newPassword));
 		refreshTokens.revokeAll(user.getId());

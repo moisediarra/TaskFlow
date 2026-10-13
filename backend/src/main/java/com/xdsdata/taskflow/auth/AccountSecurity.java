@@ -2,6 +2,7 @@ package com.xdsdata.taskflow.auth;
 
 import java.util.UUID;
 
+import com.xdsdata.taskflow.auth.internal.PasswordConfirmations;
 import com.xdsdata.taskflow.auth.internal.PasswordPolicy;
 import com.xdsdata.taskflow.auth.internal.PasswordResetService;
 import com.xdsdata.taskflow.auth.internal.RefreshTokenService;
@@ -30,25 +31,35 @@ public class AccountSecurity {
 
 	private final PasswordResetService passwordResets;
 
+	private final PasswordConfirmations passwordConfirmations;
+
 	AccountSecurity(UserService users, PasswordEncoder passwordEncoder, RefreshTokenService refreshTokens,
-			PasswordResetService passwordResets) {
+			PasswordResetService passwordResets, PasswordConfirmations passwordConfirmations) {
 		this.users = users;
 		this.passwordEncoder = passwordEncoder;
 		this.refreshTokens = refreshTokens;
 		this.passwordResets = passwordResets;
+		this.passwordConfirmations = passwordConfirmations;
 	}
 
-	/** @throws BadRequestException with a {@code currentPassword} field error when the password is wrong */
+	/**
+	 * @throws BadRequestException with a {@code currentPassword} field error when the password is wrong
+	 * @throws com.xdsdata.taskflow.common.error.TooManyRequestsException after repeated wrong entries
+	 */
 	public void verifyPassword(UUID userId, String rawPassword) {
-		User user = users.getById(userId);
-		if (rawPassword == null || !passwordEncoder.matches(rawPassword, user.getPasswordHash())) {
-			throw BadRequestException.field("currentPassword", "Your password is incorrect.");
-		}
+		passwordConfirmations.verify(users.getById(userId), rawPassword, "Your password is incorrect.");
 	}
 
+	/** Signs the user out everywhere: access tokens, refresh tokens and live connections end. */
 	@Transactional
 	public void revokeAllSessions(UUID userId) {
 		refreshTokens.revokeAll(userId);
+	}
+
+	/** Reset links already sent stop working, e.g. after the sign-in email was corrected. */
+	@Transactional
+	public void invalidateResetLinks(UUID userId) {
+		passwordResets.invalidateOutstanding(userId);
 	}
 
 	/**
@@ -63,7 +74,7 @@ public class AccountSecurity {
 	}
 
 	/**
-	 * Replaces a user's password; reset links already sent stop working and every session ends.
+	 * Replaces a user's password; reset links already sent stop working and the user is signed out everywhere.
 	 * @throws BadRequestException with {@code newPassword} / {@code confirmPassword} field errors
 	 */
 	@Transactional

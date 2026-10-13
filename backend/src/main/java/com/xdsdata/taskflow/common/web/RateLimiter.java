@@ -12,7 +12,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * Fixed-window, in-memory rate limiter for sensitive endpoints (login, password reset). Suitable for a
+ * Fixed-window, in-memory rate limiter for sensitive endpoints (login, password reset, password
+ * confirmations). Suitable for a
  * single application instance; a shared store would be needed when scaling out.
  */
 @Component
@@ -40,6 +41,15 @@ public class RateLimiter {
 		Window current = windows.compute(key, (k, existing) -> existing == null || now - existing.start() >= window.toMillis()
 				? new Window(now, 1) : new Window(existing.start(), existing.count() + 1));
 		return current.count() <= limit;
+	}
+
+	/** Whether {@code key} already used its {@code limit} attempts in the current window; records nothing. */
+	public boolean isExhausted(String key, int limit, Duration window) {
+		if (!enabled) {
+			return false;
+		}
+		Window current = windows.get(key);
+		return current != null && clock.millis() - current.start() < window.toMillis() && current.count() >= limit;
 	}
 
 	/** Like {@link #tryAcquire} but rejects the request with 429 when the limit is exceeded. */
