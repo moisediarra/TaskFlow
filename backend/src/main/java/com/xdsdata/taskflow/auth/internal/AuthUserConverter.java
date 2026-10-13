@@ -3,6 +3,7 @@ package com.xdsdata.taskflow.auth.internal;
 import java.util.List;
 import java.util.UUID;
 
+import com.xdsdata.taskflow.auth.SessionVersions;
 import com.xdsdata.taskflow.users.User;
 import com.xdsdata.taskflow.users.UserService;
 

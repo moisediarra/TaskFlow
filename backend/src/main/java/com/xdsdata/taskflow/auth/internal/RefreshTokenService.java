@@ -8,6 +8,7 @@ import java.util.UUID;
 import com.xdsdata.taskflow.common.AppProperties;
 import com.xdsdata.taskflow.common.error.UnauthorizedException;
 import com.xdsdata.taskflow.users.User;
+import com.xdsdata.taskflow.users.UserService;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;

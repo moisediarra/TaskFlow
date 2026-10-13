@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.xdsdata.taskflow.auth.SessionVersions;
 import com.xdsdata.taskflow.common.AppProperties;
 import com.xdsdata.taskflow.users.User;
 
