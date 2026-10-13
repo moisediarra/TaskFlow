@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StatTile } from '@/components/common/StatTile'
 import { ErrorState } from '@/components/common/states'
 import { UserAvatar } from '@/components/common/UserAvatar'
-import { useCurrentUser } from '@/features/auth/use-auth'
+import { useAuth, useCurrentUser } from '@/features/auth/use-auth'
 import { formatLongDay, pluralize } from '@/lib/format'
 import { ROLES, ROLE_HINT, ROLE_LABEL } from '@/lib/labels'
 import { queryKeys } from '@/lib/query-keys'
@@ -27,6 +27,7 @@ type PendingChange = { kind: 'role'; role: Role } | { kind: 'status'; activate: 
 export function UserDetailPage() {
   const { userId = '' } = useParams()
   const me = useCurrentUser()
+  const { updateUser } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [pending, setPending] = useState<PendingChange | null>(null)
@@ -45,8 +46,8 @@ export function UserDetailPage() {
     if (pending.kind === 'delete') {
       await managementApi.deleteUser(user.id, password)
       toast.success(`${user.name}'s account was deleted.`)
-      // Leave the page first, so nothing refetches the account that no longer exists.
-      await navigate('/management/users', { replace: true })
+      // Leave the page first (committed synchronously), so nothing refetches the account that no longer exists.
+      await navigate('/management/users', { replace: true, flushSync: true })
       queryClient.removeQueries({ queryKey: queryKeys.management.user(user.id) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.management.all })
       return
@@ -178,7 +179,7 @@ export function UserDetailPage() {
               title="Delete account"
               description={
                 ownedProjectCount > 0
-                  ? `${user.name} owns ${pluralize(ownedProjectCount, 'project')}. Delete ${ownedProjectCount === 1 ? 'it' : 'them'} first, or deactivate the account instead.`
+                  ? `${user.name} owns ${pluralize(ownedProjectCount, 'project')}, so the account can't be deleted. Deactivate it instead.`
                   : 'Permanently removes the account. Their tasks stay in their projects, unassigned, and the activity history keeps their name.'
               }
             >
@@ -190,7 +191,13 @@ export function UserDetailPage() {
         )}
       </section>
 
-      <UserFormDialog open={editing} onOpenChange={setEditing} user={user} />
+      <UserFormDialog
+        open={editing}
+        onOpenChange={setEditing}
+        user={user}
+        // Editing your own account also updates the name and email shown in the header and on your profile.
+        onSaved={(saved) => saved.id === me.id && updateUser({ ...me, name: saved.name, email: saved.email, jobTitle: saved.jobTitle })}
+      />
       <ResetPasswordDialog open={resetting} onOpenChange={setResetting} user={user} />
       <ConfirmWithPasswordDialog
         open={pending !== null}
