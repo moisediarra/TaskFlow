@@ -11,7 +11,7 @@
 **Defaults already approved by the user:**
 1. Self-registration → `PROJECT_OWNER` (overridable via `APP_DEFAULT_SIGNUP_ROLE`); first IT Manager bootstrapped from env vars at startup.
 2. Password reset: single-use 30-min token, emailed via SMTP when configured; otherwise the link is logged in the dev profile only (prod without SMTP logs a warning).
-3. User deletion = deactivation (soft delete) with reactivation. Role/status changes are IT-only, need a confirm dialog + password re-entry, never target yourself, never remove the last IT Manager (row lock). The dialog warns when the user owns projects (they stay read-only until reactivation; ownership transfer would be a later addition).
+3. User deletion = deactivation (soft delete) with reactivation. Role/status changes are IT-only, need a confirm dialog + password re-entry, never target yourself, never remove the last IT Manager (row lock). The dialog warns when the user owns projects (they stay read-only until reactivation; ownership transfer would be a later addition). *Extended later at the user's request: see [Changes after the plan](#changes-after-the-plan).*
 4. Members move and edit only tasks assigned to them (detail fields + existing tags); they can't create, delete or (re)assign. Every edit lands in the activity log.
 5. When someone other than the owner changes a task's status, the owner receives `TASK_STATUS_CHANGED`.
 
@@ -81,7 +81,7 @@ The server returns a `permissions` object per project and per task (canEdit, can
 - **Board:** four fixed columns. "+ Add Task" appears in Backlog / To Do / In Progress but not Done (§9 diagram); the generic "New task" defaults to Backlog; new tasks go to the bottom of the column.
 - **Moving tasks:** `PATCH /tasks/{id}/move {status, previousTaskId?, nextTaskId?}`. The server validates the neighbours (same project and status) and places the task between them (gap 1024). When gaps get too small it renumbers the column with a bulk update that leaves `updated_at` untouched. A stale neighbour falls back to the end of the column. Cards order by `(position, id)`. The status select in the task sheet uses the same move service.
 - **Done column:** shows the 50 most recent cards, with "Show more".
-- **Activity log (same transaction):** PROJECT_CREATED / UPDATED / DELETED / MEMBER_ADDED / MEMBER_REMOVED · TASK_CREATED / UPDATED / DELETED / ASSIGNED / UNASSIGNED / STATUS_CHANGED / PRIORITY_CHANGED / DUE_DATE_CHANGED / COMPLETED · USER_ROLE_CHANGED / USER_STATUS_CHANGED. What gets logged:
+- **Activity log (same transaction):** PROJECT_CREATED / UPDATED / DELETED / MEMBER_ADDED / MEMBER_REMOVED · TASK_CREATED / UPDATED / DELETED / ASSIGNED / UNASSIGNED / STATUS_CHANGED / PRIORITY_CHANGED / DUE_DATE_CHANGED / COMPLETED · USER_CREATED / UPDATED / ROLE_CHANGED / STATUS_CHANGED / PASSWORD_RESET / DELETED. What gets logged:
   - A move into Done logs TASK_COMPLETED (metadata: old and new status).
   - Reordering within a column logs nothing.
   - An edit logs one row per specific change, plus TASK_UPDATED for title, description or tag changes.
@@ -107,7 +107,7 @@ The server returns a `permissions` object per project and per task (canEdit, can
 - **projects:** `GET, POST /projects` · `GET, PUT, DELETE /projects/{id}` · `GET /projects/{id}/board | overview | activity?cursor | members | tags` · `POST /projects/{id}/members {email}` · `DELETE /projects/{id}/members/{userId}` · `POST /projects/{id}/tags`
 - **tasks:** `POST /projects/{id}/tasks` · `GET /projects/{id}/tasks?status=DONE&cursor` (Done paging) · `GET, PUT, DELETE /tasks/{id}` · `PUT /tasks/{id}/assignee` · `PATCH /tasks/{id}/move`
 - `GET /dashboard` · **notifications:** `GET /notifications?cursor`, `GET /notifications/unread-count`, `PATCH /notifications/{id}/read`, `POST /notifications/read-all` · `GET /search?q=` (≥2 chars; access scoped in SQL before LIMIT, tag join included)
-- **management (IT only):** `GET overview | team-activity | workload | activity-logs | users | users/{id} | projects` (filters + pagination per §25/27/31) · `PATCH users/{id}/role`, `PATCH users/{id}/status` (both require `currentPassword`)
+- **management (IT only):** `GET overview | team-activity | workload | activity-logs | users | users/{id} | projects` (filters + pagination per §25/27/31) · `POST users`, `PUT users/{id}`, `POST users/{id}/password`, `DELETE users/{id}`, `PATCH users/{id}/role`, `PATCH users/{id}/status` (all require `currentPassword`)
 
 ## Frontend
 - **Routes:**
@@ -177,3 +177,11 @@ The server returns a `permissions` object per project and per task (canEdit, can
 
    Each run uses unique data, so nothing needs resetting.
 4. Manual check with the `run` skill: both apps running with the demo seed, each role's views, mobile and tablet layouts, screenshots.
+
+## Changes after the plan
+- **Account administration** (requested by the user: "admin can manage the users"). IT Managers can add accounts with a starting password, correct a person's name, sign-in email and job title, reset a password, and permanently delete an account, alongside the existing role change and deactivation.
+  - Every action needs the IT Manager's password, is logged (`USER_CREATED`, `USER_UPDATED`, `USER_PASSWORD_RESET`, `USER_DELETED`), and is refused against yourself. The last active IT Manager stays protected.
+  - Deletion is refused for project owners. Otherwise the person is removed from their projects (their tasks are unassigned, each removal logged); their history keeps their name.
+  - Correcting an email invalidates reset links already sent. Wrong confirmation passwords are limited to 10 per 15 minutes.
+- **Signing out everywhere.** Users and refresh tokens carry a `session_version` (migration V4), also stamped into access tokens. A password change or reset, a deactivation, a deletion or a detected stolen refresh token increments it, so every older token stops working at once, and open notification connections are closed.
+- **Bootstrap.** The environment's IT Manager is created only while no active IT Manager exists, so an account an IT Manager renamed or deleted doesn't come back at the next start.
