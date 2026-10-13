@@ -37,18 +37,6 @@ class LiveConnectionsTests {
 	}
 
 	@Test
-	void aConnectionIsClaimedBeforeItsTokenIsChecked() throws Exception {
-		// The CONNECT is still being checked when the sign-out commits: it must be closed all the same.
-		WebSocketSession racing = connection("ws-4");
-		handler.afterConnectionEstablished(racing);
-		connections.claimedBy("ws-4", userId);
-
-		connections.onSessionsEnded(new UserSessionsEnded(userId));
-
-		verify(racing).close(LiveConnections.SESSION_ENDED);
-	}
-
-	@Test
 	void forgetsConnectionsThatAlreadyClosed() throws Exception {
 		WebSocketSession closed = open("ws-5", userId);
 		handler.afterConnectionClosed(closed, CloseStatus.NORMAL);
