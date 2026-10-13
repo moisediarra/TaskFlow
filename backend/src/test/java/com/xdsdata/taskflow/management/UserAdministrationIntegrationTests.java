@@ -7,18 +7,25 @@ import com.xdsdata.taskflow.common.Role;
 import com.xdsdata.taskflow.support.IntegrationTest;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** The IT Manager creates, edits, resets and deletes accounts; every change is confirmed and audited. */
+@ExtendWith(OutputCaptureExtension.class)
 class UserAdministrationIntegrationTests extends IntegrationTest {
 
 	private static final String STARTER = "Starter-pass-1";
@@ -53,11 +60,13 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 	}
 
 	@Test
-	void itManagerCorrectsDetailsIncludingTheSignInEmail() throws Exception {
+	void itManagerCorrectsDetailsIncludingTheSignInEmail(CapturedOutput output) throws Exception {
 		Session itManager = createUser("Details Admin", Role.IT_MANAGER);
 		Session target = register("Typo Nmae");
 		Session other = register("Someone Else");
 		String newEmail = uniqueEmail("typo name");
+		// A reset link already went to the old (mistyped) address.
+		String staleLink = requestResetLink(output, target.email());
 
 		mvc.perform(putAs(itManager, "/api/management/users/{id}",
 				body("name", "Typo Name", "email", other.email(), "jobTitle", "", "currentPassword", PASSWORD),
