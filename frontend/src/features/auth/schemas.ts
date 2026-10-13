@@ -52,3 +52,7 @@ export type RegisterValues = z.infer<typeof registerSchema>
 export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordValues = z.infer<typeof resetPasswordSchema>
 export type ChangePasswordValues = z.infer<typeof changePasswordSchema>
+
+/** Shared with the IT Manager's account forms, so accounts follow the same rules however they are created. */
+export const emailField = email
+export const newPasswordField = newPassword
