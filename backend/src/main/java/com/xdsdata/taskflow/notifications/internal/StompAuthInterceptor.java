@@ -33,9 +33,12 @@ class StompAuthInterceptor implements ChannelInterceptor {
 
 	private final UserService users;
 
-	StompAuthInterceptor(JwtDecoder jwtDecoder, UserService users) {
+	private final LiveConnections liveConnections;
+
+	StompAuthInterceptor(JwtDecoder jwtDecoder, UserService users, LiveConnections liveConnections) {
 		this.jwtDecoder = jwtDecoder;
 		this.users = users;
+		this.liveConnections = liveConnections;
 	}
 
 	@Override
@@ -46,7 +49,7 @@ class StompAuthInterceptor implements ChannelInterceptor {
 		}
 		StompCommand command = accessor.getCommand();
 		if (command == StompCommand.CONNECT) {
-			accessor.setUser(authenticate(accessor.getFirstNativeHeader("Authorization")));
+			accessor.setUser(authenticate(accessor.getSessionId(), accessor.getFirstNativeHeader("Authorization")));
 		}
 		else if (command == StompCommand.SUBSCRIBE) {
 			if (accessor.getUser() == null || !SUBSCRIPTION.equals(accessor.getDestination())) {
@@ -59,7 +62,7 @@ class StompAuthInterceptor implements ChannelInterceptor {
 		return message;
 	}
 
-	private Principal authenticate(String authorization) {
+	private Principal authenticate(String sessionId, String authorization) {
 		if (authorization == null || !authorization.startsWith("Bearer ")) {
 			throw new MessageDeliveryException("Missing access token");
 		}
@@ -77,6 +80,7 @@ class StompAuthInterceptor implements ChannelInterceptor {
 		catch (RuntimeException ex) {
 			throw new MessageDeliveryException("Invalid access token");
 		}
+		liveConnections.claimedBy(sessionId, userId);
 		User user = users.findById(userId)
 			.filter(User::isActive)
 			.orElseThrow(() -> new MessageDeliveryException("Account is not active"));
