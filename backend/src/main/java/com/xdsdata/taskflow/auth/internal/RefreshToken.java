@@ -41,6 +41,10 @@ public class RefreshToken {
 	@Column(name = "replaced_by")
 	private UUID replacedBy;
 
+	/** The user's session version when issued; the token dies when the user is signed out everywhere. */
+	@Column(name = "session_version", nullable = false, updatable = false)
+	private int sessionVersion;
+
 	protected RefreshToken() {
 	}
 
@@ -49,11 +53,17 @@ public class RefreshToken {
 		this.tokenHash = tokenHash;
 		this.expiresAt = expiresAt;
 		this.createdAt = createdAt;
+		this.sessionVersion = user.getSessionVersion();
 	}
 
 	void revoke(Instant when, UUID replacement) {
 		this.revokedAt = when;
 		this.replacedBy = replacement;
+	}
+
+	/** False once the user was signed out everywhere after this token was issued. */
+	boolean belongsToCurrentSession() {
+		return sessionVersion == user.getSessionVersion();
 	}
 
 	boolean isRevoked() {

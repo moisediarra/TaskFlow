@@ -39,6 +39,7 @@ class AccessTokenService {
 			.issuedAt(now)
 			.expiresAt(now.plus(ttl))
 			.claim("role", user.getRole().name())
+			.claim(SessionVersions.CLAIM, user.getSessionVersion())
 			.build();
 		String value = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
 			.getTokenValue();

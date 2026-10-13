@@ -39,6 +39,9 @@ class AuthUserConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 		User user = users.findById(userId)
 			.filter(User::isActive)
 			.orElseThrow(() -> new InvalidBearerTokenException("Account is not active"));
+		if (!SessionVersions.isCurrent(jwt, user)) {
+			throw new InvalidBearerTokenException("Session ended");
+		}
 		return UsernamePasswordAuthenticationToken.authenticated(user.toAuthUser(), jwt,
 				List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())));
 	}

@@ -25,12 +25,15 @@ public class RefreshTokenService {
 
 	private final RefreshTokenRepository tokens;
 
+	private final UserService users;
+
 	private final Clock clock;
 
 	private final Duration ttl;
 
-	RefreshTokenService(RefreshTokenRepository tokens, Clock clock, AppProperties properties) {
+	RefreshTokenService(RefreshTokenRepository tokens, UserService users, Clock clock, AppProperties properties) {
 		this.tokens = tokens;
+		this.users = users;
 		this.clock = clock;
 		this.ttl = properties.jwt().refreshTokenTtl();
 	}
@@ -51,14 +54,17 @@ public class RefreshTokenService {
 		RefreshToken token = tokens.findForUpdate(Tokens.hash(rawToken)).orElseThrow(this::sessionExpired);
 		Instant now = clock.instant();
 		User user = token.getUser();
-		if (!user.isActive()) {
+		// Checked before the reuse grace, so a token rotated just before the user was signed out everywhere
+		// (or a replacement issued by a refresh racing that) can't mint new access tokens.
+		if (!user.isActive() || !token.belongsToCurrentSession()) {
 			throw sessionExpired();
 		}
 		if (token.isRevoked()) {
 			if (token.getReplacedBy() != null && token.getRevokedAt().isAfter(now.minus(REUSE_GRACE))) {
 				return new Rotation(user, null);
 			}
-			tokens.revokeAllForUser(user.getId(), now);
+			// An old token came back: it was probably stolen, so end every session of the user.
+			revokeAll(user.getId());
 			throw sessionExpired();
 		}
 		if (token.getExpiresAt().isBefore(now)) {
@@ -79,8 +85,10 @@ public class RefreshTokenService {
 			.ifPresent(token -> token.revoke(clock.instant(), null));
 	}
 
+	/** Signs the user out everywhere: their access tokens, refresh tokens and live connections all end. */
 	@Transactional
 	public void revokeAll(UUID userId) {
+		users.endSessions(userId);
 		tokens.revokeAllForUser(userId, clock.instant());
 	}
 
