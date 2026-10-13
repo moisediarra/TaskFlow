@@ -9,7 +9,6 @@ import com.xdsdata.taskflow.auth.internal.RefreshTokenService.Rotation;
 import com.xdsdata.taskflow.common.AppProperties;
 import com.xdsdata.taskflow.common.AuthUser;
 import com.xdsdata.taskflow.common.Emails;
-import com.xdsdata.taskflow.common.error.BadRequestException;
 import com.xdsdata.taskflow.common.error.UnauthorizedException;
 import com.xdsdata.taskflow.common.web.RateLimiter;
 import com.xdsdata.taskflow.users.ProfileDto;
