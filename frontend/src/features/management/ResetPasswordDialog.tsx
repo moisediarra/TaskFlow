@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { FormError, FormField } from '@/components/common/FormField'
 import { newPasswordField } from '@/features/auth/schemas'
 import { applyFieldErrors, errorMessage } from '@/lib/errors'
+import { submitOnEnter } from '@/lib/forms'
 import { queryKeys } from '@/lib/query-keys'
 
 const schema = z
@@ -94,7 +95,7 @@ function ResetPasswordForm({ user, onClose }: { user: Pick<UserRow, 'id' | 'name
   // the one you are setting for someone else.
   return (
     <div className="grid gap-4">
-      <form className="grid gap-4" onSubmit={submit} noValidate>
+      <form className="grid gap-4" onSubmit={submit} onKeyDown={submitOnEnter(submit)} noValidate>
         <FormField label="New password" htmlFor={id('new')} error={errors.newPassword?.message} hint="At least 8 characters.">
           <Input
             id={id('new')}

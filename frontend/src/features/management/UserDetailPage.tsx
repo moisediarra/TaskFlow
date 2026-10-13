@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ChevronLeft, KeyRound, ShieldCheck, Trash2, UserCheck, UserPen, UserX } from 'lucide-react'
@@ -33,7 +33,19 @@ export function UserDetailPage() {
   const [pending, setPending] = useState<PendingChange | null>(null)
   const [editing, setEditing] = useState(false)
   const [resetting, setResetting] = useState(false)
-  const detail = useQuery({ queryKey: queryKeys.management.user(userId), queryFn: () => managementApi.user(userId) })
+  const [deleted, setDeleted] = useState(false)
+  // Once the account is deleted, the page stops fetching it (it would only 404) while it navigates away.
+  const detail = useQuery({
+    queryKey: queryKeys.management.user(userId),
+    queryFn: () => managementApi.user(userId),
+    enabled: !deleted,
+  })
+
+  // ...and its cached copy goes when the page does.
+  useEffect(() => {
+    if (!deleted) return
+    return () => queryClient.removeQueries({ queryKey: queryKeys.management.user(userId) })
+  }, [deleted, queryClient, userId])
 
   if (detail.isPending) return <Skeleton className="h-80 rounded-xl" />
   if (detail.isError) return <ErrorState error={detail.error} onRetry={() => detail.refetch()} />
@@ -45,11 +57,13 @@ export function UserDetailPage() {
     if (!pending) return
     if (pending.kind === 'delete') {
       await managementApi.deleteUser(user.id, password)
+      setDeleted(true)
       toast.success(`${user.name}'s account was deleted.`)
-      // Leave the page first (committed synchronously), so nothing refetches the account that no longer exists.
-      await navigate('/management/users', { replace: true, flushSync: true })
-      queryClient.removeQueries({ queryKey: queryKeys.management.user(user.id) })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.management.all })
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.management.all,
+        predicate: (query) => query.queryKey[2] !== user.id,
+      })
+      await navigate('/management/users', { replace: true })
       return
     }
     if (pending.kind === 'role') {

@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FormError, FormField } from '@/components/common/FormField'
 import { emailField, newPasswordField } from '@/features/auth/schemas'
 import { applyFieldErrors, errorMessage } from '@/lib/errors'
+import { submitOnEnter } from '@/lib/forms'
 import { ROLES, ROLE_HINT, ROLE_LABEL } from '@/lib/labels'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -139,7 +140,7 @@ function UserForm({ user, onClose, onSaved }: { user?: UserRow; onClose: () => v
   // browsers take it for a change of the IT Manager's password and offer to overwrite their saved one.
   return (
     <div className="grid gap-4">
-      <form className="grid gap-4" onSubmit={submit} noValidate>
+      <form className="grid gap-4" onSubmit={submit} onKeyDown={submitOnEnter(submit)} noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField label="Full name" htmlFor={id('name')} error={errors.name?.message}>
             <Input id={id('name')} autoComplete="off" aria-invalid={!!errors.name} autoFocus {...register('name')} />
