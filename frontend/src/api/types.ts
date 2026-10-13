@@ -370,7 +370,7 @@ export interface UserRow {
   activeTaskCount: number
 }
 
-/** Account administration bodies; {@code currentPassword} is the IT Manager's own password (explicit authorization). */
+/** Account administration bodies; `currentPassword` is the IT Manager's own password (explicit authorization). */
 export interface CreateUserBody {
   name: string
   email: string
