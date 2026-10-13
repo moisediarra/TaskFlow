@@ -21,6 +21,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
 	boolean existsByRoleAndStatus(Role role, UserStatus status);
 
+	/**
+	 * Locks one row with a full {@code FOR UPDATE}, which (unlike JPA's pessimistic write lock on PostgreSQL)
+	 * also blocks new rows referencing the user, such as a project they create while being deleted.
+	 */
+	@Query(value = "select * from users where id = :id for update", nativeQuery = true)
+	Optional<User> lockById(UUID id);
+
 	/** Locks the matching rows so concurrent role/status changes cannot remove the last IT Manager. */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select u from User u where u.role = :role and u.status = :status")

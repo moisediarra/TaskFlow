@@ -11,6 +11,7 @@ import com.xdsdata.taskflow.common.error.ConflictException;
 import com.xdsdata.taskflow.common.error.NotFoundException;
 import com.xdsdata.taskflow.users.internal.UserRepository;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +25,11 @@ public class UserService {
 
 	private final UserRepository users;
 
-	UserService(UserRepository users) {
+	private final ApplicationEventPublisher events;
+
+	UserService(UserRepository users, ApplicationEventPublisher events) {
 		this.users = users;
+		this.events = events;
 	}
 
 	public Optional<User> findById(UUID id) {
@@ -77,6 +81,22 @@ public class UserService {
 			});
 		user.updateDetails(name, email, jobTitle);
 		return user;
+	}
+
+	/** Loads the user and locks their row until the transaction ends (see {@link UserRepository#lockById}). */
+	@Transactional
+	public User lockForUpdate(UUID userId) {
+		return users.lockById(userId).orElseThrow(() -> new NotFoundException("User"));
+	}
+
+	/**
+	 * Signs the user out everywhere: tokens carrying the previous session version stop working, and open
+	 * real-time connections are closed after commit. Refresh-token rows are revoked by the auth module.
+	 */
+	@Transactional
+	public void endSessions(UUID userId) {
+		getById(userId).endSessions();
+		events.publishEvent(new UserSessionsEnded(userId));
 	}
 
 	/**
