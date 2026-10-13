@@ -126,6 +126,7 @@ What the tests cover:
 - **`user-admin.spec.ts`** has the IT Manager add an account (which then signs in), edit it, reset its password and delete it, all recorded in the activity log. A second test checks the error messages: wrong confirmation password, email already taken, and a project owner who can't be deleted.
 - The workflow, drag and user-admin tests also fail on any Content-Security-Policy violation. Only the nginx build sends a CSP, so run them against Docker to check it.
 - Tests that need an IT Manager (`definition-of-done`, `user-admin` and the management part of `responsive`) are skipped unless `E2E_IT_EMAIL` and `E2E_IT_PASSWORD` are set.
+- A full run signs in as that IT Manager about six times. Sign-in is limited to 10 attempts per account in 15 minutes, so before a second run within 15 minutes, restart the backend (the limit is kept in memory). For a dedicated test stack, you can instead set `APP_RATE_LIMIT_ENABLED=false`.
 - **Backend integration tests:**
   - A sweep over every endpoint: 401 without a token, and 403 on `/api/management/**` for anyone who isn't an IT Manager.
   - The role × membership permission matrix, plus tampered IDs.
