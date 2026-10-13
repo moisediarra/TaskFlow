@@ -3,7 +3,7 @@ import { Client } from '@stomp/stompjs'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
-import { accessTokenTtlSeconds, expireSession, getAccessToken, refreshSession } from '@/api/client'
+import { accessTokenTtlSeconds, expireSession, getAccessToken, refreshSessionOutcome } from '@/api/client'
 import type { NotificationPush } from '@/api/types'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -14,7 +14,8 @@ const SESSION_ENDED = 4001
  * Receives notifications in real time over STOMP (claude.md stack: Spring WebSocket + STOMP), so a user
  * sees "You have been assigned…" without refreshing. Reconnects automatically with a fresh token.
  * When the server ends the connection because the person was signed out everywhere (password changed or reset,
- * account deactivated), the session is refreshed before reconnecting, or ended if it can't be.
+ * account deactivated), the session is refreshed before reconnecting, and ended if the server refuses that.
+ * A server that is merely unreachable (restarting, offline) never signs anyone out: the client keeps retrying.
  */
 export function useNotificationStream(enabled: boolean) {
   const queryClient = useQueryClient()
@@ -31,13 +32,14 @@ export function useNotificationStream(enabled: boolean) {
       heartbeatOutgoing: 10_000,
       beforeConnect: async () => {
         if (rejected || accessTokenTtlSeconds() < 30) {
-          rejected = false
-          if (!(await refreshSession())) {
+          const { session, refused } = await refreshSessionOutcome()
+          if (refused) {
             // The client checks that it is still active after this callback, so it won't connect.
             void client.deactivate()
             expireSession()
             return
           }
+          if (session) rejected = false
         }
         client.connectHeaders = { Authorization: `Bearer ${getAccessToken() ?? ''}` }
       },

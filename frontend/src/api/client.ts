@@ -8,7 +8,7 @@ import type { Session } from './types'
 
 let accessToken: string | null = null
 let sessionExpiredHandler: (() => void) | null = null
-let refreshInFlight: Promise<Session | null> | null = null
+let refreshInFlight: Promise<RefreshOutcome> | null = null
 
 export function getAccessToken() {
   return accessToken
@@ -83,22 +83,36 @@ export const authHttp = axios.create(baseConfig)
 
 export const http = axios.create(baseConfig)
 
+/**
+ * A refresh either renews the session, is refused by the server (the session really ended: signed out,
+ * password changed, account deactivated), or fails for another reason (offline, server restarting).
+ */
+export interface RefreshOutcome {
+  session: Session | null
+  refused: boolean
+}
+
 /** Exchanges the refresh cookie for a new access token; concurrent callers share one request. */
-export function refreshSession(): Promise<Session | null> {
+export function refreshSessionOutcome(): Promise<RefreshOutcome> {
   refreshInFlight ??= authHttp
     .post<Session>('/auth/refresh')
     .then((response) => {
       accessToken = response.data.accessToken
-      return response.data
+      return { session: response.data, refused: false }
     })
-    .catch(() => {
+    .catch((error: unknown) => {
       accessToken = null
-      return null
+      const status = error instanceof ApiError ? error.status : 0
+      return { session: null, refused: status === 401 || status === 403 }
     })
     .finally(() => {
       refreshInFlight = null
     })
   return refreshInFlight
+}
+
+export function refreshSession(): Promise<Session | null> {
+  return refreshSessionOutcome().then((outcome) => outcome.session)
 }
 
 http.interceptors.request.use((config) => {
