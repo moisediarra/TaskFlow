@@ -11,6 +11,7 @@ import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
@@ -27,6 +28,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 	 */
 	@Query(value = "select * from users where id = :id for update", nativeQuery = true)
 	Optional<User> lockById(UUID id);
+
+	/**
+	 * Increments in the database, so two overlapping sign-outs both count; pending changes (a new password
+	 * hash) are written first.
+	 */
+	@Modifying(flushAutomatically = true)
+	@Query("update User u set u.sessionVersion = u.sessionVersion + 1 where u.id = :id")
+	int incrementSessionVersion(UUID id);
 
 	/** Locks the matching rows so concurrent role/status changes cannot remove the last IT Manager. */
 	@Lock(LockModeType.PESSIMISTIC_WRITE)

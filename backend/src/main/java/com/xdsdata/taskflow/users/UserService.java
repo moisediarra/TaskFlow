@@ -10,6 +10,7 @@ import com.xdsdata.taskflow.common.Role;
 import com.xdsdata.taskflow.common.error.ConflictException;
 import com.xdsdata.taskflow.common.error.NotFoundException;
 import com.xdsdata.taskflow.users.internal.UserRepository;
+import jakarta.persistence.EntityManager;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -27,9 +28,12 @@ public class UserService {
 
 	private final ApplicationEventPublisher events;
 
-	UserService(UserRepository users, ApplicationEventPublisher events) {
+	private final EntityManager entityManager;
+
+	UserService(UserRepository users, ApplicationEventPublisher events, EntityManager entityManager) {
 		this.users = users;
 		this.events = events;
+		this.entityManager = entityManager;
 	}
 
 	public Optional<User> findById(UUID id) {
@@ -95,7 +99,12 @@ public class UserService {
 	 */
 	@Transactional
 	public void endSessions(UUID userId) {
-		getById(userId).endSessions();
+		User user = getById(userId);
+		if (users.incrementSessionVersion(userId) == 0) {
+			throw new NotFoundException("User");
+		}
+		// Re-read, so a session started later in this transaction (after a password change) gets the new version.
+		entityManager.refresh(user);
 		events.publishEvent(new UserSessionsEnded(userId));
 	}
 

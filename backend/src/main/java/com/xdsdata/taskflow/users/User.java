@@ -54,7 +54,10 @@ public class User {
 	@Column(length = 500)
 	private String avatar;
 
-	/** Stamped into every access and refresh token; incrementing it signs the user out everywhere. */
+	/**
+	 * Stamped into every access and refresh token; incrementing it (UserService#endSessions) signs the user
+	 * out everywhere.
+	 */
 	@Column(name = "session_version", nullable = false)
 	private int sessionVersion;
 
@@ -98,10 +101,6 @@ public class User {
 
 	public void changeStatus(UserStatus status) {
 		this.status = status;
-	}
-
-	public void endSessions() {
-		this.sessionVersion++;
 	}
 
 	public boolean isActive() {
