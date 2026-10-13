@@ -47,6 +47,7 @@ test.describe.serial('responsive layout', () => {
         for (const path of management) await visit(it, width, path, testInfo.outputPath(`${width}-${slug(path, projectId)}.png`))
 
         // Account administration: the Add user dialog, and a person's page with its Account section.
+        await it.goto('/management/users')
         await it.getByRole('button', { name: 'Add user' }).click()
         await expect(it.getByRole('dialog')).toBeVisible()
         await expectFits(it, width, 'add user dialog', testInfo.outputPath(`${width}-add-user.png`))
