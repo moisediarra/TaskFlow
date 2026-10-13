@@ -180,7 +180,7 @@ The server returns a `permissions` object per project and per task (canEdit, can
 
 ## Changes after the plan
 - **Account administration** (requested by the user: "admin can manage the users"). IT Managers can add accounts with a starting password, correct a person's name, sign-in email and job title, reset a password, and permanently delete an account, alongside the existing role change and deactivation.
-  - Every action needs the IT Manager's password, is logged (`USER_CREATED`, `USER_UPDATED`, `USER_PASSWORD_RESET`, `USER_DELETED`), and is refused against yourself. The last active IT Manager stays protected.
+  - Every action needs the IT Manager's password, is logged (`USER_CREATED`, `USER_UPDATED`, `USER_PASSWORD_RESET`, `USER_DELETED`). Changing your own role, status or password, or deleting yourself, is refused there. The last active IT Manager stays protected.
   - Deletion is refused for project owners. Otherwise the person is removed from their projects (their tasks are unassigned, each removal logged); their history keeps their name.
   - Correcting an email invalidates reset links already sent. Wrong confirmation passwords are limited to 10 per 15 minutes.
 - **Signing out everywhere.** Users and refresh tokens carry a `session_version` (migration V4), also stamped into access tokens. A password change or reset, a deactivation, a deletion or a detected stolen refresh token increments it, so every older token stops working at once, and open notification connections are closed.
