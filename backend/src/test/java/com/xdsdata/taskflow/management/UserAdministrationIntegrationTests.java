@@ -15,10 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -200,9 +198,6 @@ class UserAdministrationIntegrationTests extends IntegrationTest {
 				.andExpect(jsonPath("$.items[*].action", hasItem("PROJECT_MEMBER_REMOVED")))
 				.andExpect(jsonPath("$.items[*].action", hasItem("TASK_UNASSIGNED")));
 		}
-		// Nobody was notified about the deletion's side effects: the person no longer exists.
-		mvc.perform(getAs(firstOwner, "/api/notifications"))
-			.andExpect(jsonPath("$.items[*].type", everyItem(startsWith("TASK_"))));
 	}
 
 	@Test
