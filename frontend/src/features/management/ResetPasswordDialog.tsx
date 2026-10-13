@@ -34,7 +34,7 @@ interface ResetPasswordDialogProps {
   user: Pick<UserRow, 'id' | 'name'>
 }
 
-/** Sets a new password for someone who lost theirs; they are signed out everywhere (claude.md §31 confirmation). */
+/** The IT Manager sets a new password for someone who lost theirs; that person is signed out everywhere. */
 export function ResetPasswordDialog({ open, onOpenChange, user }: ResetPasswordDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
