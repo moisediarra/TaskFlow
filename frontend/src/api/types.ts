@@ -30,8 +30,12 @@ export type ActivityAction =
   | 'TASK_PRIORITY_CHANGED'
   | 'TASK_DUE_DATE_CHANGED'
   | 'TASK_COMPLETED'
+  | 'USER_CREATED'
+  | 'USER_UPDATED'
   | 'USER_ROLE_CHANGED'
   | 'USER_STATUS_CHANGED'
+  | 'USER_PASSWORD_RESET'
+  | 'USER_DELETED'
 
 export interface PageResponse<T> {
   items: T[]
@@ -364,6 +368,24 @@ export interface UserRow {
   createdAt: string
   projectCount: number
   activeTaskCount: number
+}
+
+/** Account administration bodies; {@code currentPassword} is the IT Manager's own password (explicit authorization). */
+export interface CreateUserBody {
+  name: string
+  email: string
+  jobTitle: string | null
+  role: Role
+  password: string
+  confirmPassword: string
+  currentPassword: string
+}
+
+export interface UpdateUserBody {
+  name: string
+  email: string
+  jobTitle: string | null
+  currentPassword: string
 }
 
 export interface UserDetail {

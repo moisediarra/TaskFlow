@@ -53,6 +53,13 @@ export const ROLE_LABEL: Record<Role, string> = {
   MEMBER: 'Member',
 }
 
+/** What each global role allows, shown where an IT Manager picks one. */
+export const ROLE_HINT: Record<Role, string> = {
+  IT_MANAGER: 'Sees every project and person, and manages accounts.',
+  PROJECT_OWNER: 'Creates projects and manages their members and tasks.',
+  MEMBER: 'Works on the projects they are added to.',
+}
+
 /** Tag palette keys chosen by the server, mapped to badge classes (full class names for Tailwind). */
 export const TAG_COLORS: Record<string, string> = {
   teal: 'bg-teal-50 text-teal-700 ring-teal-600/20',
@@ -83,8 +90,12 @@ export const ACTIVITY_LABEL: Record<ActivityAction, string> = {
   TASK_PRIORITY_CHANGED: 'Priority changed',
   TASK_DUE_DATE_CHANGED: 'Due date changed',
   TASK_COMPLETED: 'Task completed',
+  USER_CREATED: 'Account created',
+  USER_UPDATED: 'Account updated',
   USER_ROLE_CHANGED: 'Role changed',
   USER_STATUS_CHANGED: 'Account status changed',
+  USER_PASSWORD_RESET: 'Password reset',
+  USER_DELETED: 'Account deleted',
 }
 
 export const ACTIVITY_ACTIONS = Object.keys(ACTIVITY_LABEL) as ActivityAction[]

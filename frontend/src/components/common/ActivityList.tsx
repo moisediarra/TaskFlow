@@ -5,12 +5,15 @@ import {
   Flag,
   FolderPlus,
   FolderX,
+  KeyRound,
   Loader2,
   Pencil,
   ShieldCheck,
   Trash2,
   UserMinus,
+  UserPen,
   UserPlus,
+  UserX,
   type LucideIcon,
 } from 'lucide-react'
 import type { Activity, ActivityAction } from '@/api/types'
@@ -33,8 +36,12 @@ const ICONS: Record<ActivityAction, { icon: LucideIcon; tone: string }> = {
   TASK_PRIORITY_CHANGED: { icon: Flag, tone: 'bg-rose-50 text-rose-700' },
   TASK_DUE_DATE_CHANGED: { icon: CalendarClock, tone: 'bg-violet-50 text-violet-700' },
   TASK_COMPLETED: { icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-700' },
+  USER_CREATED: { icon: UserPlus, tone: 'bg-indigo-50 text-indigo-700' },
+  USER_UPDATED: { icon: UserPen, tone: 'bg-indigo-50 text-indigo-700' },
   USER_ROLE_CHANGED: { icon: ShieldCheck, tone: 'bg-indigo-50 text-indigo-700' },
   USER_STATUS_CHANGED: { icon: ShieldCheck, tone: 'bg-indigo-50 text-indigo-700' },
+  USER_PASSWORD_RESET: { icon: KeyRound, tone: 'bg-indigo-50 text-indigo-700' },
+  USER_DELETED: { icon: UserX, tone: 'bg-red-50 text-red-600' },
 }
 
 interface ActivityListProps {

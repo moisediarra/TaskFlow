@@ -138,6 +138,12 @@ export const managementApi = {
   users: (filters: { q?: string; role?: Role; status?: UserStatus; page?: number; size?: number }) =>
     data(http.get<PageResponse<UserRow>>('/management/users', { params: params({ size: 20, ...filters }) })),
   user: (id: string) => data(http.get<UserDetail>(`/management/users/${id}`)),
+  createUser: (body: CreateUserBody) => data(http.post<UserRow>('/management/users', body)),
+  updateUser: (id: string, body: UpdateUserBody) => data(http.put<UserRow>(`/management/users/${id}`, body)),
+  resetPassword: (id: string, newPassword: string, confirmPassword: string, currentPassword: string) =>
+    http.post(`/management/users/${id}/password`, { newPassword, confirmPassword, currentPassword }),
+  deleteUser: (id: string, currentPassword: string) =>
+    http.delete(`/management/users/${id}`, { data: { currentPassword } }),
   changeRole: (id: string, role: Role, currentPassword: string) =>
     data(http.patch<UserRow>(`/management/users/${id}/role`, { role, currentPassword })),
   changeStatus: (id: string, status: UserStatus, currentPassword: string) =>
