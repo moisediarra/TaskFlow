@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -77,6 +77,9 @@ export function UserFormDialog({ open, onOpenChange, user, onSaved }: UserFormDi
 
 function UserForm({ user, onClose, onSaved }: { user?: UserRow; onClose: () => void; onSaved?: (user: UserRow) => void }) {
   const creating = !user
+  // Unique ids: this dialog opens over pages that have their own fields (the Users page's Role filter).
+  const baseId = useId()
+  const id = (field: string) => `${baseId}-${field}`
   const queryClient = useQueryClient()
   const [formError, setFormError] = useState<string | null>(null)
   const {
@@ -127,97 +130,106 @@ function UserForm({ user, onClose, onSaved }: { user?: UserRow; onClose: () => v
     },
   })
 
+  const submit = handleSubmit((values) => {
+    setFormError(null)
+    save.mutate(values)
+  })
+
+  // The IT Manager's own password lives in a separate <form>: in one form with someone else's new password,
+  // browsers take it for a change of the IT Manager's password and offer to overwrite their saved one.
   return (
-    <form
-      className="grid gap-4"
-      onSubmit={handleSubmit((values) => {
-        setFormError(null)
-        save.mutate(values)
-      })}
-      noValidate
-    >
-      <FormError message={formError} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Full name" htmlFor="user-name" error={errors.name?.message}>
-          <Input id="user-name" autoComplete="off" aria-invalid={!!errors.name} autoFocus {...register('name')} />
-        </FormField>
-        <FormField
-          label="Email"
-          htmlFor="user-email"
-          error={errors.email?.message}
-          hint={creating ? undefined : 'They sign in with this email.'}
-        >
-          <Input id="user-email" type="email" autoComplete="off" aria-invalid={!!errors.email} {...register('email')} />
-        </FormField>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Job title" htmlFor="user-job-title" error={errors.jobTitle?.message} hint="Optional">
-          <Input id="user-job-title" autoComplete="off" aria-invalid={!!errors.jobTitle} {...register('jobTitle')} />
-        </FormField>
-        {creating ? (
-          <FormField label="Role" htmlFor="user-role" error={errors.role?.message} hint={ROLE_HINT[role]}>
-            <Controller
-              control={control}
-              name="role"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="user-role" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {ROLE_LABEL[value]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </FormField>
-        ) : null}
-      </div>
-      {creating ? (
+    <div className="grid gap-4">
+      <form className="grid gap-4" onSubmit={submit} noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Starting password" htmlFor="user-password" error={errors.password?.message} hint="At least 8 characters.">
-            <Input id="user-password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} {...register('password')} />
+          <FormField label="Full name" htmlFor={id('name')} error={errors.name?.message}>
+            <Input id={id('name')} autoComplete="off" aria-invalid={!!errors.name} autoFocus {...register('name')} />
           </FormField>
-          <FormField label="Confirm password" htmlFor="user-confirm-password" error={errors.confirmPassword?.message}>
-            <Input
-              id="user-confirm-password"
-              type="password"
-              autoComplete="new-password"
-              aria-invalid={!!errors.confirmPassword}
-              {...register('confirmPassword')}
-            />
+          <FormField
+            label="Email"
+            htmlFor={id('email')}
+            error={errors.email?.message}
+            hint={creating ? undefined : 'They sign in with this email.'}
+          >
+            <Input id={id('email')} type="email" autoComplete="off" aria-invalid={!!errors.email} {...register('email')} />
           </FormField>
         </div>
-      ) : null}
-      <div className="border-t pt-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField label="Job title" htmlFor={id('job-title')} error={errors.jobTitle?.message} hint="Optional">
+            <Input id={id('job-title')} autoComplete="off" aria-invalid={!!errors.jobTitle} {...register('jobTitle')} />
+          </FormField>
+          {creating ? (
+            <FormField label="Role" htmlFor={id('role')} error={errors.role?.message} hint={ROLE_HINT[role]}>
+              <Controller
+                control={control}
+                name="role"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id={id('role')} className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROLES.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {ROLE_LABEL[value]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </FormField>
+          ) : null}
+        </div>
+        {creating ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField label="Starting password" htmlFor={id('password')} error={errors.password?.message} hint="At least 8 characters.">
+              <Input
+                id={id('password')}
+                type="password"
+                autoComplete="new-password"
+                aria-invalid={!!errors.password}
+                {...register('password')}
+              />
+            </FormField>
+            <FormField label="Confirm password" htmlFor={id('confirm-password')} error={errors.confirmPassword?.message}>
+              <Input
+                id={id('confirm-password')}
+                type="password"
+                autoComplete="new-password"
+                aria-invalid={!!errors.confirmPassword}
+                {...register('confirmPassword')}
+              />
+            </FormField>
+          </div>
+        ) : null}
+      </form>
+      <form className="grid gap-4 border-t pt-4" onSubmit={submit} noValidate>
         <FormField
           label="Your password"
-          htmlFor="user-admin-password"
+          htmlFor={id('admin-password')}
           error={errors.currentPassword?.message}
           hint="Confirms that you are making this change."
         >
           <Input
-            id="user-admin-password"
+            id={id('admin-password')}
             type="password"
             autoComplete="current-password"
             aria-invalid={!!errors.currentPassword}
             {...register('currentPassword')}
           />
         </FormField>
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose} disabled={save.isPending}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={save.isPending}>
-          {save.isPending ? <Loader2 className="animate-spin" /> : null}
-          {creating ? 'Create account' : 'Save changes'}
-        </Button>
-      </DialogFooter>
-    </form>
+        {/* Next to the buttons, so it stays in view when the dialog scrolls on a phone. */}
+        <FormError message={formError} />
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} disabled={save.isPending}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={save.isPending}>
+            {save.isPending ? <Loader2 className="animate-spin" /> : null}
+            {creating ? 'Create account' : 'Save changes'}
+          </Button>
+        </DialogFooter>
+      </form>
+    </div>
   )
 }
