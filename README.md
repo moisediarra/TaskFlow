@@ -19,7 +19,7 @@ cp .env.example .env        # then replace every "change-me" (see Configuration)
 docker compose up -d --build
 ```
 
-Open <http://localhost:8090> and sign in with `APP_BOOTSTRAP_ADMIN_EMAIL` / `APP_BOOTSTRAP_ADMIN_PASSWORD`. That IT Manager account is created at the first start. New people register themselves at `/register`.
+Open <http://localhost:8090> and sign in with `APP_BOOTSTRAP_ADMIN_EMAIL` / `APP_BOOTSTRAP_ADMIN_PASSWORD`. That IT Manager account is created at the first start. New people register themselves at `/register`, or an IT Manager adds them under **Management → Users**.
 
 To get a populated app on the first start, set `APP_SEED_DEMO=true` and choose an `APP_SEED_DEMO_PASSWORD` (at least 8 characters) before the first `up`. Demo data is only created when the database has no projects yet. It contains the people from the spec (John Doe, Sarah Smith, Mohammed Ali, David Martin and Emma Wilson, all `firstname.lastname@taskflow.local`), three projects, and tasks in every column, some of them overdue.
 
@@ -90,7 +90,7 @@ The backend reads environment variables, or `backend/.env` when you run it local
 | `APP_COOKIE_SECURE` | `false` | Set to `true` behind HTTPS, so the refresh cookie is `Secure`. |
 | `APP_TIMEZONE` | `UTC` | Time zone used to decide "due today" and "overdue". |
 | `APP_DEFAULT_SIGNUP_ROLE` | `PROJECT_OWNER` | Role given to self-registered accounts (`PROJECT_OWNER` or `MEMBER`). |
-| `APP_BOOTSTRAP_ADMIN_EMAIL`, `APP_BOOTSTRAP_ADMIN_PASSWORD`, `APP_BOOTSTRAP_ADMIN_NAME` | empty, empty, `IT Manager` | First IT Manager, created at startup if missing. |
+| `APP_BOOTSTRAP_ADMIN_EMAIL`, `APP_BOOTSTRAP_ADMIN_PASSWORD`, `APP_BOOTSTRAP_ADMIN_NAME` | empty, empty, `IT Manager` | First IT Manager, created at startup only while no active IT Manager exists. It is not recreated after being renamed or deleted; later accounts are managed in the app. |
 | `APP_SEED_DEMO`, `APP_SEED_DEMO_PASSWORD` | `false`, empty | Demo data on an empty database. |
 | `APP_LOG_RESET_LINKS` | `false` | Log reset links when no SMTP server is configured (development only). |
 | `APP_API_DOCS_ENABLED` | `false` | Expose OpenAPI and Swagger UI. |
@@ -123,11 +123,15 @@ What the tests cover:
   - The intervenant completes it. The activity log records it and the owner is notified.
 - **`board-drag.spec.ts`** checks that a drag and drop survives a reload.
 - **`responsive.spec.ts`** opens every page, including the task sheet and the IT Manager pages, at 375, 768 and 1280 px. It fails if a page scrolls sideways and saves screenshots to `frontend/test-results/`.
-- The workflow and drag tests also fail on any Content-Security-Policy violation. Only the nginx build sends a CSP, so run them against Docker to check it.
+- **`user-admin.spec.ts`** has the IT Manager add an account (which then signs in), edit it, reset its password and delete it, all recorded in the activity log. A second test checks the error messages: wrong confirmation password, email already taken, and a project owner who can't be deleted.
+- The workflow, drag and user-admin tests also fail on any Content-Security-Policy violation. Only the nginx build sends a CSP, so run them against Docker to check it.
+- Tests that need an IT Manager (`definition-of-done`, `user-admin` and the management part of `responsive`) are skipped unless `E2E_IT_EMAIL` and `E2E_IT_PASSWORD` are set.
 - **Backend integration tests:**
   - A sweep over every endpoint: 401 without a token, and 403 on `/api/management/**` for anyone who isn't an IT Manager.
   - The role × membership permission matrix, plus tampered IDs.
   - Refresh-token rotation and reuse detection, single-use reset tokens.
+  - Signing out everywhere: after a password change or reset, a deactivation or a deletion, older access tokens, refresh tokens (even within the reuse grace period) and emailed reset links stop working.
+  - Account administration: creation, detail and email edits, password resets, deletion that keeps tasks and history, and the guards for project owners, yourself and the last IT Manager.
   - Activity and notification side effects, deadline deduplication, search scoping and management metrics.
 
 Each E2E run creates its own users and projects, so nothing needs resetting.
@@ -140,17 +144,23 @@ Authorization runs in the backend services. The UI only hides what the backend w
 |---|---|---|---|---|
 | Create a project | ✓ | ✓ | ✗ when the global role is MEMBER | — |
 | View a project, its board, members, overview and activity | ✓ (read-only) | ✓ | ✓ | 403 |
-| Edit or delete a project, add or remove members | only as owner | ✓ | ✗ | 403 |
+| Edit or delete a project, add or remove members | only as owner (deleting an account removes that person from every project) | ✓ | ✗ | 403 |
 | Create, delete or (re)assign tasks, create tags | only as owner | ✓ | ✗ | 403 |
 | Edit or move a task | only as owner or assignee | ✓ any task | ✓ tasks assigned to them | 403 |
-| Management pages, global search, user role and status | ✓ | ✗ | ✗ | ✗ |
+| Management pages, global search | ✓ | ✗ | ✗ | ✗ |
+| Manage accounts: add, edit name, email and job title, reset password, change role, deactivate or reactivate, delete | ✓ | ✗ | ✗ | ✗ |
 
 - **Self-registration.** New accounts get `PROJECT_OWNER` by default.
-- **Changing a user's role or status:**
-  - Only an IT Manager can do it.
-  - It needs their current password and a confirmation.
-  - Nobody can change their own role or status, and the last IT Manager can't be removed.
-- **Deleting a user** deactivates the account (it can be reactivated). A deactivated user is signed out at their next request.
+- **Account administration** (Management → Users):
+  - Only IT Managers can do it, and every change asks for their own password and is recorded in the activity log. After 10 wrong passwords in 15 minutes, confirmations are refused for a while.
+  - Nobody can change their own role, status or password there, or delete themselves. Your own password is changed from your profile.
+  - The last active IT Manager can't be demoted, deactivated or deleted.
+  - A new account gets a starting password chosen by the IT Manager, who shares it with the person. They can change it from their profile.
+- **Signing out everywhere.** A password change or reset, a deactivation and a deletion end all of that person's sessions at once: access tokens, refresh tokens and live notification connections.
+- **Deactivating** blocks sign-in and can be undone. **Deleting** is permanent:
+  - It is refused for people who own projects, so their projects keep an owner. Deactivate them instead.
+  - The person is removed from their projects first. Their tasks become unassigned and each removal is logged.
+  - The activity history keeps their name.
 
 ## How it works
 
@@ -171,10 +181,11 @@ Authorization runs in the backend services. The UI only hides what the backend w
   - The access token is a 15-minute HS256 JWT, kept in memory by the frontend.
   - The refresh token is a rotating 14-day token in an `HttpOnly; SameSite=Strict` cookie scoped to `/api/auth`. It is stored hashed, and reusing an old token is detected.
   - The user is reloaded on every request, so a role change or deactivation applies immediately.
+  - Access and refresh tokens carry the user's session version. Signing someone out everywhere increments it, which ends every token issued before, including one from a refresh racing the change.
 - **Real-time notifications:**
   - Notifications are saved in the same transaction as the action.
   - After commit they are pushed over STOMP (`/ws`, `/user/queue/notifications`).
-  - The client authenticates the STOMP connection with its access token.
+  - The client authenticates the STOMP connection with its access token. When the user is signed out everywhere, the server closes their connections, and the browser refreshes its session or signs out.
   - Only notifications are real-time. Boards refresh on navigation.
 - **Kanban ordering.** Cards have floating-point positions. A move sends the card's new neighbours, and the server places it between them. The server renumbers a column only when the gaps get too small.
 - **Database.** Flyway migrations live in `backend/src/main/resources/db/migration`. Hibernate only validates the schema. Search uses `pg_trgm` indexes.
