@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
@@ -84,7 +84,6 @@ function UserForm({ user, onClose, onSaved }: { user?: UserRow; onClose: () => v
     control,
     handleSubmit,
     setError,
-    watch,
     formState: { errors },
   } = useForm<Values>({
     resolver: zodResolver(schemaFor(creating)),
@@ -98,7 +97,7 @@ function UserForm({ user, onClose, onSaved }: { user?: UserRow; onClose: () => v
       currentPassword: '',
     },
   })
-  const role = watch('role')
+  const role = useWatch({ control, name: 'role' })
 
   const save = useMutation({
     mutationFn: (values: Values) => {
