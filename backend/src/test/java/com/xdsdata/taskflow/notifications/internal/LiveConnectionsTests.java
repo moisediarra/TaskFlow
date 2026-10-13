@@ -1,15 +1,10 @@
 package com.xdsdata.taskflow.notifications.internal;
 
-import java.util.Set;
 import java.util.UUID;
 
 import com.xdsdata.taskflow.users.UserSessionsEnded;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.messaging.simp.user.SimpSession;
-import org.springframework.messaging.simp.user.SimpUser;
-import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.WebSocketSession;
@@ -19,59 +14,61 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Someone signed out everywhere loses their real-time connection at once. */
+/** Someone signed out everywhere loses their real-time connections at once. */
 class LiveConnectionsTests {
 
-	private final SimpUserRegistry registry = mock(SimpUserRegistry.class);
-
-	@SuppressWarnings("unchecked")
-	private final ObjectProvider<SimpUserRegistry> provider = mock(ObjectProvider.class);
-
-	private final LiveConnections connections = new LiveConnections(provider);
+	private final LiveConnections connections = new LiveConnections();
 
 	private final WebSocketHandler handler = connections.decorate(mock(WebSocketHandler.class));
 
+	private final UUID userId = UUID.randomUUID();
+
 	@Test
-	void closesTheConnectionsOfTheSignedOutUserOnly() throws Exception {
-		UUID userId = UUID.randomUUID();
-		WebSocketSession theirs = connection("ws-1");
-		WebSocketSession someoneElses = connection("ws-2");
-		handler.afterConnectionEstablished(theirs);
-		handler.afterConnectionEstablished(someoneElses);
-		registered(userId, "ws-1");
+	void closesEveryConnectionOfTheSignedOutUserOnly() throws Exception {
+		WebSocketSession laptop = open("ws-1", userId);
+		WebSocketSession phone = open("ws-2", userId);
+		WebSocketSession someoneElses = open("ws-3", UUID.randomUUID());
 
 		connections.onSessionsEnded(new UserSessionsEnded(userId));
 
-		verify(theirs).close(LiveConnections.SESSION_ENDED);
+		verify(laptop).close(LiveConnections.SESSION_ENDED);
+		verify(phone).close(LiveConnections.SESSION_ENDED);
 		verify(someoneElses, never()).close(LiveConnections.SESSION_ENDED);
 	}
 
 	@Test
+	void aConnectionIsClaimedBeforeItsTokenIsChecked() throws Exception {
+		// The CONNECT is still being checked when the sign-out commits: it must be closed all the same.
+		WebSocketSession racing = connection("ws-4");
+		handler.afterConnectionEstablished(racing);
+		connections.claimedBy("ws-4", userId);
+
+		connections.onSessionsEnded(new UserSessionsEnded(userId));
+
+		verify(racing).close(LiveConnections.SESSION_ENDED);
+	}
+
+	@Test
 	void forgetsConnectionsThatAlreadyClosed() throws Exception {
-		UUID userId = UUID.randomUUID();
-		WebSocketSession closed = connection("ws-3");
-		handler.afterConnectionEstablished(closed);
+		WebSocketSession closed = open("ws-5", userId);
 		handler.afterConnectionClosed(closed, CloseStatus.NORMAL);
-		registered(userId, "ws-3");
 
 		connections.onSessionsEnded(new UserSessionsEnded(userId));
 
 		verify(closed, never()).close(LiveConnections.SESSION_ENDED);
 	}
 
+	private WebSocketSession open(String id, UUID owner) throws Exception {
+		WebSocketSession session = connection(id);
+		handler.afterConnectionEstablished(session);
+		connections.claimedBy(id, owner);
+		return session;
+	}
+
 	private static WebSocketSession connection(String id) {
 		WebSocketSession session = mock(WebSocketSession.class);
 		when(session.getId()).thenReturn(id);
 		return session;
-	}
-
-	private void registered(UUID userId, String sessionId) {
-		SimpUser user = mock(SimpUser.class);
-		SimpSession session = mock(SimpSession.class);
-		when(session.getId()).thenReturn(sessionId);
-		when(user.getSessions()).thenReturn(Set.of(session));
-		when(registry.getUser(userId.toString())).thenReturn(user);
-		when(provider.getObject()).thenReturn(registry);
 	}
 
 }
