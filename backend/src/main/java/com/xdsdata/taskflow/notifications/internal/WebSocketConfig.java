@@ -10,6 +10,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketTransportRegistration;
 
 /**
  * Real-time notification delivery: STOMP over a plain WebSocket at {@code /ws}. Only server-to-user messages
@@ -25,11 +26,14 @@ class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 	private final TaskScheduler messageBrokerTaskScheduler;
 
+	private final LiveConnections liveConnections;
+
 	WebSocketConfig(StompAuthInterceptor authInterceptor, AppProperties properties,
-			@Lazy TaskScheduler messageBrokerTaskScheduler) {
+			@Lazy TaskScheduler messageBrokerTaskScheduler, LiveConnections liveConnections) {
 		this.authInterceptor = authInterceptor;
 		this.properties = properties;
 		this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
+		this.liveConnections = liveConnections;
 	}
 
 	@Override
@@ -49,6 +53,11 @@ class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
 		registration.interceptors(authInterceptor);
+	}
+
+	@Override
+	public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
+		registration.addDecoratorFactory(liveConnections);
 	}
 
 }
