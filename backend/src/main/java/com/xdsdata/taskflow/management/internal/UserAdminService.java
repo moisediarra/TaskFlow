@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <li>IT Managers can edit their own details here, but not their own role, status or password, and they
  * can't delete themselves.</li>
  * <li>TaskFlow always keeps at least one active IT Manager.</li>
+ * <li>Password resets, deactivation and deletion sign the person out everywhere at once.</li>
  * <li>Deleting removes the account but keeps the person's work: their tasks stay (unassigned) and the
  * activity history keeps their name. People who own projects can't be deleted; deactivate them instead.</li>
  * </ul>
@@ -91,6 +92,8 @@ class UserAdminService {
 			changed.add("email");
 			metadata.put("previousEmail", previousEmail);
 			metadata.put("newEmail", updated.getEmail());
+			// A reset link sent to the old (perhaps mistyped) address must not take over the account.
+			accountSecurity.invalidateResetLinks(userId);
 		}
 		if (!Objects.equals(previousJobTitle, updated.getJobTitle())) {
 			changed.add("job title");
@@ -146,7 +149,7 @@ class UserAdminService {
 		return management.row(users.getById(userId));
 	}
 
-	/** Sets a new password the IT Manager shares with the person; their sessions end immediately. */
+	/** Sets a new password the IT Manager shares with the person, who is signed out everywhere at once. */
 	@Transactional
 	void resetPassword(AuthUser actor, UUID userId, String newPassword, String confirmation, String currentPassword) {
 		User target = authorize(actor, userId, currentPassword, "To change your own password, use your profile.");
@@ -157,20 +160,27 @@ class UserAdminService {
 
 	@Transactional
 	void delete(AuthUser actor, UUID userId, String currentPassword) {
-		User target = authorize(actor, userId, currentPassword, "You can't delete your own account.");
+		requireNotSelf(actor, userId, "You can't delete your own account.");
+		// Locked first, so nothing can start referencing the account (a new project, a membership) until it is
+		// gone: the ownership check below stays true.
+		User target = users.lockForUpdate(userId);
+		accountSecurity.verifyPassword(actor.id(), currentPassword);
 		long owned = management.ownedProjectCount(userId);
 		if (owned > 0) {
 			throw new ConflictException("OWNS_PROJECTS",
-					"%s owns %d %s. Delete %s first, or deactivate the account instead.".formatted(target.getName(), owned,
-							owned == 1 ? "project" : "projects", owned == 1 ? "it" : "them"));
+					"%s owns %d %s, so the account can't be deleted. Deactivate it instead.".formatted(target.getName(),
+							owned, owned == 1 ? "project" : "projects"));
 		}
 		if (target.getRole() == Role.IT_MANAGER && target.isActive()) {
 			requireAnotherItManager();
 		}
 		Map<String, Object> metadata = about(target);
-		metadata.put("email", target.getEmail());
 		metadata.put("role", target.getRole().name());
 		String name = target.getName();
+		// Signed out and treated as inactive first: no notifications are created for, or pushed to, a person
+		// whose account is about to disappear.
+		users.changeStatus(userId, UserStatus.DEACTIVATED);
+		accountSecurity.revokeAllSessions(userId);
 		projects.removeFromAllProjects(actor, userId);
 		activity.record(actor, ActivityAction.USER_DELETED, null, null,
 				"%s deleted %s's account.".formatted(actor.name(), name), metadata);
@@ -178,12 +188,16 @@ class UserAdminService {
 	}
 
 	private User authorize(AuthUser actor, UUID userId, String currentPassword, String selfMessage) {
-		if (actor.id().equals(userId)) {
-			throw new BadRequestException("CANNOT_CHANGE_SELF", selfMessage);
-		}
+		requireNotSelf(actor, userId, selfMessage);
 		User target = users.getById(userId);
 		accountSecurity.verifyPassword(actor.id(), currentPassword);
 		return target;
+	}
+
+	private static void requireNotSelf(AuthUser actor, UUID userId, String message) {
+		if (actor.id().equals(userId)) {
+			throw new BadRequestException("CANNOT_CHANGE_SELF", message);
+		}
 	}
 
 	private void requireAnotherItManager() {
