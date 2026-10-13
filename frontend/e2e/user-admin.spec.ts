@@ -1,5 +1,5 @@
 import { expect, test, type Browser } from '@playwright/test'
-import { RUN, cspViolations, emailFor, login, newPage } from './helpers'
+import { RUN, createProject, cspViolations, emailFor, login, newPage, register } from './helpers'
 
 const IT_EMAIL = process.env.E2E_IT_EMAIL
 const IT_PASSWORD = process.env.E2E_IT_PASSWORD
