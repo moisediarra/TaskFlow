@@ -38,6 +38,10 @@ public class PasswordResetToken {
 	@Column(name = "used_at")
 	private Instant usedAt;
 
+	/** The address the link was sent to; it stops working if the account's email changes. */
+	@Column(name = "sent_to", length = 254, updatable = false)
+	private String sentTo;
+
 	protected PasswordResetToken() {
 	}
 
@@ -46,10 +50,11 @@ public class PasswordResetToken {
 		this.tokenHash = tokenHash;
 		this.expiresAt = expiresAt;
 		this.createdAt = createdAt;
+		this.sentTo = user.getEmail();
 	}
 
 	boolean isUsable(Instant now) {
-		return usedAt == null && expiresAt.isAfter(now) && user.isActive();
+		return usedAt == null && expiresAt.isAfter(now) && user.isActive() && user.getEmail().equals(sentTo);
 	}
 
 	void markUsed(Instant when) {
