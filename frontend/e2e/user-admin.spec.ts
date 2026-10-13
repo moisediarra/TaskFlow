@@ -34,12 +34,12 @@ test('IT Manager adds, edits, resets the password of and deletes an account', as
   await login(nina, email, STARTER)
   await expect(nina).toHaveURL(/\/dashboard/)
 
-  // Correct the details.
+  // Correct the details (Enter in a field submits, even though the button sits in the password's form).
   await it.getByRole('button', { name: 'Edit details' }).click()
   const edit = it.getByRole('dialog')
-  await edit.getByLabel('Job title').fill('Senior Developer')
   await edit.getByLabel('Your password').fill(IT_PASSWORD!)
-  await edit.getByRole('button', { name: 'Save changes' }).click()
+  await edit.getByLabel('Job title').fill('Senior Developer')
+  await edit.getByLabel('Job title').press('Enter')
   await expect(it.getByText(`${email} · Senior Developer`)).toBeVisible()
 
   // Reset the password: the starting one stops working, the new one works.
@@ -53,7 +53,16 @@ test('IT Manager adds, edits, resets the password of and deletes an account', as
   await expectSignInRefused(browser, email, STARTER)
   await login(await newPage(browser), email, RESET)
 
-  // Delete the account: it disappears and can no longer sign in.
+  // Delete the account: it disappears and can no longer sign in. The page is reloaded first, so the Users page
+  // isn't loaded yet when the deletion navigates there; nothing may fetch the deleted account meanwhile.
+  await it.reload()
+  await expect(it.getByRole('heading', { level: 1, name })).toBeVisible()
+  const deletedAccountFetches: string[] = []
+  it.on('response', (response) => {
+    if (response.request().method() === 'GET' && response.status() === 404 && response.url().includes('/api/management/users/')) {
+      deletedAccountFetches.push(response.url())
+    }
+  })
   await it.getByRole('button', { name: 'Delete account' }).click()
   const remove = it.getByRole('dialog')
   await remove.getByLabel('Your password').fill(IT_PASSWORD!)
@@ -61,6 +70,7 @@ test('IT Manager adds, edits, resets the password of and deletes an account', as
   await expect(it).toHaveURL(/\/management\/users$/)
   await expect(it.getByText(`${name}'s account was deleted.`)).toBeVisible()
   await expectSignInRefused(browser, email, RESET)
+  expect(deletedAccountFetches).toEqual([])
 
   // Each change is in the activity log.
   await it.goto('/management/activity-logs')
