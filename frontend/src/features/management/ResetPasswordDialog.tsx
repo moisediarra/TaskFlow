@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -56,6 +56,8 @@ export function ResetPasswordDialog({ open, onOpenChange, user }: ResetPasswordD
 }
 
 function ResetPasswordForm({ user, onClose }: { user: Pick<UserRow, 'id' | 'name'>; onClose: () => void }) {
+  const baseId = useId()
+  const id = (field: string) => `${baseId}-${field}`
   const queryClient = useQueryClient()
   const [formError, setFormError] = useState<string | null>(null)
   const {
@@ -83,60 +85,62 @@ function ResetPasswordForm({ user, onClose }: { user: Pick<UserRow, 'id' | 'name
     },
   })
 
+  const submit = handleSubmit((values) => {
+    setFormError(null)
+    reset.mutate(values)
+  })
+
+  // Your own password sits in a separate <form>, so browsers don't offer to replace your saved password with
+  // the one you are setting for someone else.
   return (
-    <form
-      className="grid gap-4"
-      onSubmit={handleSubmit((values) => {
-        setFormError(null)
-        reset.mutate(values)
-      })}
-      noValidate
-    >
-      <FormError message={formError} />
-      <FormField label="New password" htmlFor="reset-new-password" error={errors.newPassword?.message} hint="At least 8 characters.">
-        <Input
-          id="reset-new-password"
-          type="password"
-          autoComplete="new-password"
-          autoFocus
-          aria-invalid={!!errors.newPassword}
-          {...register('newPassword')}
-        />
-      </FormField>
-      <FormField label="Confirm new password" htmlFor="reset-confirm-password" error={errors.confirmPassword?.message}>
-        <Input
-          id="reset-confirm-password"
-          type="password"
-          autoComplete="new-password"
-          aria-invalid={!!errors.confirmPassword}
-          {...register('confirmPassword')}
-        />
-      </FormField>
-      <div className="border-t pt-4">
+    <div className="grid gap-4">
+      <form className="grid gap-4" onSubmit={submit} noValidate>
+        <FormField label="New password" htmlFor={id('new')} error={errors.newPassword?.message} hint="At least 8 characters.">
+          <Input
+            id={id('new')}
+            type="password"
+            autoComplete="new-password"
+            autoFocus
+            aria-invalid={!!errors.newPassword}
+            {...register('newPassword')}
+          />
+        </FormField>
+        <FormField label="Confirm new password" htmlFor={id('confirm')} error={errors.confirmPassword?.message}>
+          <Input
+            id={id('confirm')}
+            type="password"
+            autoComplete="new-password"
+            aria-invalid={!!errors.confirmPassword}
+            {...register('confirmPassword')}
+          />
+        </FormField>
+      </form>
+      <form className="grid gap-4 border-t pt-4" onSubmit={submit} noValidate>
         <FormField
           label="Your password"
-          htmlFor="reset-admin-password"
+          htmlFor={id('admin')}
           error={errors.currentPassword?.message}
           hint="Confirms that you are making this change."
         >
           <Input
-            id="reset-admin-password"
+            id={id('admin')}
             type="password"
             autoComplete="current-password"
             aria-invalid={!!errors.currentPassword}
             {...register('currentPassword')}
           />
         </FormField>
-      </div>
-      <DialogFooter>
-        <Button type="button" variant="outline" onClick={onClose} disabled={reset.isPending}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={reset.isPending}>
-          {reset.isPending ? <Loader2 className="animate-spin" /> : null}
-          Reset password
-        </Button>
-      </DialogFooter>
-    </form>
+        <FormError message={formError} />
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose} disabled={reset.isPending}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={reset.isPending}>
+            {reset.isPending ? <Loader2 className="animate-spin" /> : null}
+            Reset password
+          </Button>
+        </DialogFooter>
+      </form>
+    </div>
   )
 }
