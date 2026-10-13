@@ -1,10 +1,14 @@
 package com.xdsdata.taskflow.support;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.jayway.jsonpath.JsonPath;
 import com.xdsdata.taskflow.TestcontainersConfiguration;
@@ -16,6 +20,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
@@ -143,6 +148,30 @@ public abstract class IntegrationTest {
 
 	protected void move(Session actor, UUID taskId, String status) throws Exception {
 		mvc.perform(patchAs(actor, "/api/tasks/{id}/move", body("status", status), taskId)).andExpect(status().isOk());
+	}
+
+	// ---- password reset links ----
+
+	private static final Pattern RESET_TOKEN = Pattern.compile("reset-password\?token=([A-Za-z0-9_-]+)");
+
+	/**
+	 * The reset link is sent asynchronously and logged in the test profile; the test class needs
+	 * {@code @ExtendWith(OutputCaptureExtension.class)}.
+	 */
+	protected static String awaitResetToken(CapturedOutput output, String email) throws InterruptedException {
+		Instant deadline = Instant.now().plus(Duration.ofSeconds(10));
+		while (Instant.now().isBefore(deadline)) {
+			for (String line : output.getAll().split("\R")) {
+				if (line.contains(email)) {
+					Matcher matcher = RESET_TOKEN.matcher(line);
+					if (matcher.find()) {
+						return matcher.group(1);
+					}
+				}
+			}
+			Thread.sleep(100);
+		}
+		throw new AssertionError("No password reset link was logged for " + email);
 	}
 
 	// ---- JSON ----
