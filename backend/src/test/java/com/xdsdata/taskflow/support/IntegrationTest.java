@@ -152,8 +152,6 @@ public abstract class IntegrationTest {
 
 	// ---- password reset links ----
 
-	private static final Pattern RESET_TOKEN = Pattern.compile("reset-password\?token=([A-Za-z0-9_-]+)");
-
 	/**
 	 * The reset link is sent asynchronously and logged in the test profile; the test class needs
 	 * {@code @ExtendWith(OutputCaptureExtension.class)}.
@@ -161,7 +159,7 @@ public abstract class IntegrationTest {
 	protected static String awaitResetToken(CapturedOutput output, String email) throws InterruptedException {
 		Instant deadline = Instant.now().plus(Duration.ofSeconds(10));
 		while (Instant.now().isBefore(deadline)) {
-			for (String line : output.getAll().split("\R")) {
+			for (String line : output.getAll().split("\\R")) {
 				if (line.contains(email)) {
 					Matcher matcher = RESET_TOKEN.matcher(line);
 					if (matcher.find()) {
